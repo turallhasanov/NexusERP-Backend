@@ -1,0 +1,6 @@
+@NexusERP_API_HostAddress = http://localhost:5264
+
+GET {{NexusERP_API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
