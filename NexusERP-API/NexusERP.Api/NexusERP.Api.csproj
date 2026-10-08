@@ -4,7 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <RootNamespace>NexusERP_API</RootNamespace>
+    <RootNamespace>NexusERP.Api</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
@@ -12,7 +12,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Controllers\" />
+    <ProjectReference Include="..\NexusERP.Application\NexusERP.Application.csproj" />
+    <ProjectReference Include="..\NexusERP.Infrastructure\NexusERP.Infrastructure.csproj" />
   </ItemGroup>
+
 
 </Project>
