@@ -11,6 +11,11 @@ public abstract class ApiControllerBase : ControllerBase
         User.FindFirst(AppClaimTypes.UserId)?.Value
         ?? throw new InvalidOperationException("Authenticated user has no 'sub' claim.");
 
+    /// <summary>Company of the authenticated user (the JWT "companyId" claim). Only valid on [RequireCompany] actions.</summary>
+    protected string CurrentCompanyId =>
+        User.FindFirst(AppClaimTypes.CompanyId)?.Value
+        ?? throw new InvalidOperationException("Authenticated user has no 'companyId' claim.");
+
     protected IActionResult ToActionResult<T>(Result<T> result) where T : ApiResponse
     {
         if (result.IsSuccess)
