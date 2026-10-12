@@ -3,6 +3,62 @@
   "WorkspaceRootPath": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{6403E417-CD85-4CED-AE39-082683DE27E0}|NexusERP.Api\\NexusERP.Api.csproj|c:\\users\\rog\\desktop\\nexuserp-backend\\nexuserp-api\\nexuserp.api\\middlewares\\requirecompanyattribute.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6403E417-CD85-4CED-AE39-082683DE27E0}|NexusERP.Api\\NexusERP.Api.csproj|solutionrelative:nexuserp.api\\middlewares\\requirecompanyattribute.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6403E417-CD85-4CED-AE39-082683DE27E0}|NexusERP.Api\\NexusERP.Api.csproj|c:\\users\\rog\\desktop\\nexuserp-backend\\nexuserp-api\\nexuserp.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{6403E417-CD85-4CED-AE39-082683DE27E0}|NexusERP.Api\\NexusERP.Api.csproj|solutionrelative:nexuserp.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6403E417-CD85-4CED-AE39-082683DE27E0}|NexusERP.Api\\NexusERP.Api.csproj|c:\\users\\rog\\desktop\\nexuserp-backend\\nexuserp-api\\nexuserp.api\\appsettings.development.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{6403E417-CD85-4CED-AE39-082683DE27E0}|NexusERP.Api\\NexusERP.Api.csproj|solutionrelative:nexuserp.api\\appsettings.development.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F79DFC40-B2FB-405B-8B53-77F8DEEAB137}|NexusERP.Infrastructure\\NexusERP.Infrastructure.csproj|c:\\users\\rog\\desktop\\nexuserp-backend\\nexuserp-api\\nexuserp.infrastructure\\persistence\\appdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{F79DFC40-B2FB-405B-8B53-77F8DEEAB137}|NexusERP.Infrastructure\\NexusERP.Infrastructure.csproj|solutionrelative:nexuserp.infrastructure\\persistence\\appdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F79DFC40-B2FB-405B-8B53-77F8DEEAB137}|NexusERP.Infrastructure\\NexusERP.Infrastructure.csproj|c:\\users\\rog\\desktop\\nexuserp-backend\\nexuserp-api\\nexuserp.infrastructure\\dependencyinjection.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{F79DFC40-B2FB-405B-8B53-77F8DEEAB137}|NexusERP.Infrastructure\\NexusERP.Infrastructure.csproj|solutionrelative:nexuserp.infrastructure\\dependencyinjection.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E4FD453D-F404-456C-98B1-81D2DB1F22B9}|NexusERP.Application\\NexusERP.Application.csproj|c:\\users\\rog\\desktop\\nexuserp-backend\\nexuserp-api\\nexuserp.application\\common\\itemsresponsedto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E4FD453D-F404-456C-98B1-81D2DB1F22B9}|NexusERP.Application\\NexusERP.Application.csproj|solutionrelative:nexuserp.application\\common\\itemsresponsedto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E4FD453D-F404-456C-98B1-81D2DB1F22B9}|NexusERP.Application\\NexusERP.Application.csproj|c:\\users\\rog\\desktop\\nexuserp-backend\\nexuserp-api\\nexuserp.application\\common\\appclaimtypes.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E4FD453D-F404-456C-98B1-81D2DB1F22B9}|NexusERP.Application\\NexusERP.Application.csproj|solutionrelative:nexuserp.application\\common\\appclaimtypes.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E4FD453D-F404-456C-98B1-81D2DB1F22B9}|NexusERP.Application\\NexusERP.Application.csproj|c:\\users\\rog\\desktop\\nexuserp-backend\\nexuserp-api\\nexuserp.application\\common\\apiresponse.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E4FD453D-F404-456C-98B1-81D2DB1F22B9}|NexusERP.Application\\NexusERP.Application.csproj|solutionrelative:nexuserp.application\\common\\apiresponse.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F79DFC40-B2FB-405B-8B53-77F8DEEAB137}|NexusERP.Infrastructure\\NexusERP.Infrastructure.csproj|c:\\users\\rog\\desktop\\nexuserp-backend\\nexuserp-api\\nexuserp.infrastructure\\persistence\\configurations\\companyconfiguration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{F79DFC40-B2FB-405B-8B53-77F8DEEAB137}|NexusERP.Infrastructure\\NexusERP.Infrastructure.csproj|solutionrelative:nexuserp.infrastructure\\persistence\\configurations\\companyconfiguration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F79DFC40-B2FB-405B-8B53-77F8DEEAB137}|NexusERP.Infrastructure\\NexusERP.Infrastructure.csproj|c:\\users\\rog\\desktop\\nexuserp-backend\\nexuserp-api\\nexuserp.infrastructure\\persistence\\configurations\\categoryconfiguration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{F79DFC40-B2FB-405B-8B53-77F8DEEAB137}|NexusERP.Infrastructure\\NexusERP.Infrastructure.csproj|solutionrelative:nexuserp.infrastructure\\persistence\\configurations\\categoryconfiguration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F79DFC40-B2FB-405B-8B53-77F8DEEAB137}|NexusERP.Infrastructure\\NexusERP.Infrastructure.csproj|c:\\users\\rog\\desktop\\nexuserp-backend\\nexuserp-api\\nexuserp.infrastructure\\persistence\\configurations\\purchaseitemconfiguration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{F79DFC40-B2FB-405B-8B53-77F8DEEAB137}|NexusERP.Infrastructure\\NexusERP.Infrastructure.csproj|solutionrelative:nexuserp.infrastructure\\persistence\\configurations\\purchaseitemconfiguration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{4011DE07-F051-45D9-923A-11FC61A76D50}|NexusERP.Domain\\NexusERP.Domain.csproj|c:\\users\\rog\\desktop\\nexuserp-backend\\nexuserp-api\\nexuserp.domain\\enums\\purchasestatus.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{4011DE07-F051-45D9-923A-11FC61A76D50}|NexusERP.Domain\\NexusERP.Domain.csproj|solutionrelative:nexuserp.domain\\enums\\purchasestatus.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{4011DE07-F051-45D9-923A-11FC61A76D50}|NexusERP.Domain\\NexusERP.Domain.csproj|c:\\users\\rog\\desktop\\nexuserp-backend\\nexuserp-api\\nexuserp.domain\\entities\\store.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{4011DE07-F051-45D9-923A-11FC61A76D50}|NexusERP.Domain\\NexusERP.Domain.csproj|solutionrelative:nexuserp.domain\\entities\\store.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E4FD453D-F404-456C-98B1-81D2DB1F22B9}|NexusERP.Application\\NexusERP.Application.csproj|c:\\users\\rog\\desktop\\nexuserp-backend\\nexuserp-api\\nexuserp.application\\auth\\authservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E4FD453D-F404-456C-98B1-81D2DB1F22B9}|NexusERP.Application\\NexusERP.Application.csproj|solutionrelative:nexuserp.application\\auth\\authservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{E4FD453D-F404-456C-98B1-81D2DB1F22B9}|NexusERP.Application\\NexusERP.Application.csproj|c:\\users\\rog\\desktop\\nexuserp-backend\\nexuserp-api\\nexuserp.application\\customers\\customerdtos.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{E4FD453D-F404-456C-98B1-81D2DB1F22B9}|NexusERP.Application\\NexusERP.Application.csproj|solutionrelative:nexuserp.application\\customers\\customerdtos.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
@@ -23,32 +79,12 @@
       "RelativeMoniker": "D:0:0:{E4FD453D-F404-456C-98B1-81D2DB1F22B9}|NexusERP.Application\\NexusERP.Application.csproj|solutionrelative:nexuserp.application\\categories\\categorydtos.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{E4FD453D-F404-456C-98B1-81D2DB1F22B9}|NexusERP.Application\\NexusERP.Application.csproj|c:\\users\\rog\\desktop\\nexuserp-backend\\nexuserp-api\\nexuserp.application\\auth\\authservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{E4FD453D-F404-456C-98B1-81D2DB1F22B9}|NexusERP.Application\\NexusERP.Application.csproj|solutionrelative:nexuserp.application\\auth\\authservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{E4FD453D-F404-456C-98B1-81D2DB1F22B9}|NexusERP.Application\\NexusERP.Application.csproj|c:\\users\\rog\\desktop\\nexuserp-backend\\nexuserp-api\\nexuserp.application\\auth\\authdtos.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{E4FD453D-F404-456C-98B1-81D2DB1F22B9}|NexusERP.Application\\NexusERP.Application.csproj|solutionrelative:nexuserp.application\\auth\\authdtos.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{F79DFC40-B2FB-405B-8B53-77F8DEEAB137}|NexusERP.Infrastructure\\NexusERP.Infrastructure.csproj|c:\\users\\rog\\desktop\\nexuserp-backend\\nexuserp-api\\nexuserp.infrastructure\\persistence\\migrations\\20261012090139_adddictionaries.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{F79DFC40-B2FB-405B-8B53-77F8DEEAB137}|NexusERP.Infrastructure\\NexusERP.Infrastructure.csproj|solutionrelative:nexuserp.infrastructure\\persistence\\migrations\\20261012090139_adddictionaries.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{F79DFC40-B2FB-405B-8B53-77F8DEEAB137}|NexusERP.Infrastructure\\NexusERP.Infrastructure.csproj|c:\\users\\rog\\desktop\\nexuserp-backend\\nexuserp-api\\nexuserp.infrastructure\\persistence\\appdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{F79DFC40-B2FB-405B-8B53-77F8DEEAB137}|NexusERP.Infrastructure\\NexusERP.Infrastructure.csproj|solutionrelative:nexuserp.infrastructure\\persistence\\appdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{6403E417-CD85-4CED-AE39-082683DE27E0}|NexusERP.Api\\NexusERP.Api.csproj|c:\\users\\rog\\desktop\\nexuserp-backend\\nexuserp-api\\nexuserp.api\\appsettings.development.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
-      "RelativeMoniker": "D:0:0:{6403E417-CD85-4CED-AE39-082683DE27E0}|NexusERP.Api\\NexusERP.Api.csproj|solutionrelative:nexuserp.api\\appsettings.development.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{6403E417-CD85-4CED-AE39-082683DE27E0}|NexusERP.Api\\NexusERP.Api.csproj|c:\\users\\rog\\desktop\\nexuserp-backend\\nexuserp-api\\nexuserp.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
-      "RelativeMoniker": "D:0:0:{6403E417-CD85-4CED-AE39-082683DE27E0}|NexusERP.Api\\NexusERP.Api.csproj|solutionrelative:nexuserp.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{F79DFC40-B2FB-405B-8B53-77F8DEEAB137}|NexusERP.Infrastructure\\NexusERP.Infrastructure.csproj|c:\\users\\rog\\desktop\\nexuserp-backend\\nexuserp-api\\nexuserp.infrastructure\\persistence\\configurations\\companyconfiguration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{F79DFC40-B2FB-405B-8B53-77F8DEEAB137}|NexusERP.Infrastructure\\NexusERP.Infrastructure.csproj|solutionrelative:nexuserp.infrastructure\\persistence\\configurations\\companyconfiguration.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{F79DFC40-B2FB-405B-8B53-77F8DEEAB137}|NexusERP.Infrastructure\\NexusERP.Infrastructure.csproj|c:\\users\\rog\\desktop\\nexuserp-backend\\nexuserp-api\\nexuserp.infrastructure\\nexuserp.infrastructure.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
@@ -63,20 +99,8 @@
       "RelativeMoniker": "D:0:0:{F79DFC40-B2FB-405B-8B53-77F8DEEAB137}|NexusERP.Infrastructure\\NexusERP.Infrastructure.csproj|solutionrelative:nexuserp.infrastructure\\authentication\\jwtsettings.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{F79DFC40-B2FB-405B-8B53-77F8DEEAB137}|NexusERP.Infrastructure\\NexusERP.Infrastructure.csproj|c:\\users\\rog\\desktop\\nexuserp-backend\\nexuserp-api\\nexuserp.infrastructure\\dependencyinjection.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{F79DFC40-B2FB-405B-8B53-77F8DEEAB137}|NexusERP.Infrastructure\\NexusERP.Infrastructure.csproj|solutionrelative:nexuserp.infrastructure\\dependencyinjection.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{E4FD453D-F404-456C-98B1-81D2DB1F22B9}|NexusERP.Application\\NexusERP.Application.csproj|c:\\users\\rog\\desktop\\nexuserp-backend\\nexuserp-api\\nexuserp.application\\common\\appclaimtypes.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{E4FD453D-F404-456C-98B1-81D2DB1F22B9}|NexusERP.Application\\NexusERP.Application.csproj|solutionrelative:nexuserp.application\\common\\appclaimtypes.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{4011DE07-F051-45D9-923A-11FC61A76D50}|NexusERP.Domain\\NexusERP.Domain.csproj|c:\\users\\rog\\desktop\\nexuserp-backend\\nexuserp-api\\nexuserp.domain\\entities\\user.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{4011DE07-F051-45D9-923A-11FC61A76D50}|NexusERP.Domain\\NexusERP.Domain.csproj|solutionrelative:nexuserp.domain\\entities\\user.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{E4FD453D-F404-456C-98B1-81D2DB1F22B9}|NexusERP.Application\\NexusERP.Application.csproj|c:\\users\\rog\\desktop\\nexuserp-backend\\nexuserp-api\\nexuserp.application\\common\\apiresponse.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{E4FD453D-F404-456C-98B1-81D2DB1F22B9}|NexusERP.Application\\NexusERP.Application.csproj|solutionrelative:nexuserp.application\\common\\apiresponse.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{6403E417-CD85-4CED-AE39-082683DE27E0}|NexusERP.Api\\NexusERP.Api.csproj|c:\\users\\rog\\desktop\\nexuserp-backend\\nexuserp-api\\nexuserp.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -99,19 +123,188 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
+              "Title": "RequireCompanyAttribute.cs",
+              "DocumentMoniker": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Api\\Middlewares\\RequireCompanyAttribute.cs",
+              "RelativeDocumentMoniker": "NexusERP.Api\\Middlewares\\RequireCompanyAttribute.cs",
+              "ToolTip": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Api\\Middlewares\\RequireCompanyAttribute.cs",
+              "RelativeToolTip": "NexusERP.Api\\Middlewares\\RequireCompanyAttribute.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-10-12T09:23:15.658Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "ItemsResponseDto.cs",
+              "DocumentMoniker": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Application\\Common\\ItemsResponseDto.cs",
+              "RelativeDocumentMoniker": "NexusERP.Application\\Common\\ItemsResponseDto.cs",
+              "ToolTip": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Application\\Common\\ItemsResponseDto.cs",
+              "RelativeToolTip": "NexusERP.Application\\Common\\ItemsResponseDto.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-10-12T09:22:09.023Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "ApiResponse.cs",
+              "DocumentMoniker": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Application\\Common\\ApiResponse.cs",
+              "RelativeDocumentMoniker": "NexusERP.Application\\Common\\ApiResponse.cs",
+              "ToolTip": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Application\\Common\\ApiResponse.cs",
+              "RelativeToolTip": "NexusERP.Application\\Common\\ApiResponse.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-10-12T08:18:47.275Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "DependencyInjection.cs",
+              "DocumentMoniker": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Infrastructure\\DependencyInjection.cs",
+              "RelativeDocumentMoniker": "NexusERP.Infrastructure\\DependencyInjection.cs",
+              "ToolTip": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Infrastructure\\DependencyInjection.cs",
+              "RelativeToolTip": "NexusERP.Infrastructure\\DependencyInjection.cs",
+              "ViewState": "AgIAAAsAAAAAAAAAAAAAwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-10-12T08:18:33.874Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "AppDbContext.cs",
+              "DocumentMoniker": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Infrastructure\\Persistence\\AppDbContext.cs",
+              "RelativeDocumentMoniker": "NexusERP.Infrastructure\\Persistence\\AppDbContext.cs",
+              "ToolTip": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Infrastructure\\Persistence\\AppDbContext.cs",
+              "RelativeToolTip": "NexusERP.Infrastructure\\Persistence\\AppDbContext.cs",
+              "ViewState": "AgIAAAwAAAAAAAAAAAA7wAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-10-12T08:18:28.645Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "appsettings.Development.json",
+              "DocumentMoniker": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Api\\appsettings.Development.json",
+              "RelativeDocumentMoniker": "NexusERP.Api\\appsettings.Development.json",
+              "ToolTip": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Api\\appsettings.Development.json",
+              "RelativeToolTip": "NexusERP.Api\\appsettings.Development.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2026-10-12T08:54:32.092Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "appsettings.json",
+              "DocumentMoniker": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Api\\appsettings.json",
+              "RelativeDocumentMoniker": "NexusERP.Api\\appsettings.json",
+              "ToolTip": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Api\\appsettings.json",
+              "RelativeToolTip": "NexusERP.Api\\appsettings.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABEAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2026-10-12T08:54:35.148Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "CompanyConfiguration.cs",
+              "DocumentMoniker": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Infrastructure\\Persistence\\Configurations\\CompanyConfiguration.cs",
+              "RelativeDocumentMoniker": "NexusERP.Infrastructure\\Persistence\\Configurations\\CompanyConfiguration.cs",
+              "ToolTip": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Infrastructure\\Persistence\\Configurations\\CompanyConfiguration.cs",
+              "RelativeToolTip": "NexusERP.Infrastructure\\Persistence\\Configurations\\CompanyConfiguration.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-10-12T09:01:46.673Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "CategoryConfiguration.cs",
+              "DocumentMoniker": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Infrastructure\\Persistence\\Configurations\\CategoryConfiguration.cs",
+              "RelativeDocumentMoniker": "NexusERP.Infrastructure\\Persistence\\Configurations\\CategoryConfiguration.cs",
+              "ToolTip": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Infrastructure\\Persistence\\Configurations\\CategoryConfiguration.cs",
+              "RelativeToolTip": "NexusERP.Infrastructure\\Persistence\\Configurations\\CategoryConfiguration.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-10-12T09:21:52.386Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "PurchaseItemConfiguration.cs",
+              "DocumentMoniker": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Infrastructure\\Persistence\\Configurations\\PurchaseItemConfiguration.cs",
+              "RelativeDocumentMoniker": "NexusERP.Infrastructure\\Persistence\\Configurations\\PurchaseItemConfiguration.cs",
+              "ToolTip": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Infrastructure\\Persistence\\Configurations\\PurchaseItemConfiguration.cs",
+              "RelativeToolTip": "NexusERP.Infrastructure\\Persistence\\Configurations\\PurchaseItemConfiguration.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-10-12T09:21:50.422Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 11,
+              "Title": "PurchaseStatus.cs",
+              "DocumentMoniker": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Domain\\Enums\\PurchaseStatus.cs",
+              "RelativeDocumentMoniker": "NexusERP.Domain\\Enums\\PurchaseStatus.cs",
+              "ToolTip": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Domain\\Enums\\PurchaseStatus.cs",
+              "RelativeToolTip": "NexusERP.Domain\\Enums\\PurchaseStatus.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-10-12T09:21:43.987Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "AppClaimTypes.cs",
+              "DocumentMoniker": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Application\\Common\\AppClaimTypes.cs",
+              "RelativeDocumentMoniker": "NexusERP.Application\\Common\\AppClaimTypes.cs",
+              "ToolTip": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Application\\Common\\AppClaimTypes.cs",
+              "RelativeToolTip": "NexusERP.Application\\Common\\AppClaimTypes.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-10-12T08:32:11.564Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 12,
+              "Title": "Store.cs",
+              "DocumentMoniker": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Domain\\Entities\\Store.cs",
+              "RelativeDocumentMoniker": "NexusERP.Domain\\Entities\\Store.cs",
+              "ToolTip": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Domain\\Entities\\Store.cs",
+              "RelativeToolTip": "NexusERP.Domain\\Entities\\Store.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-10-12T09:21:34.063Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 14,
               "Title": "CustomerDtos.cs",
               "DocumentMoniker": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Application\\Customers\\CustomerDtos.cs",
               "RelativeDocumentMoniker": "NexusERP.Application\\Customers\\CustomerDtos.cs",
               "ToolTip": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Application\\Customers\\CustomerDtos.cs",
               "RelativeToolTip": "NexusERP.Application\\Customers\\CustomerDtos.cs",
-              "ViewState": "AgIAAAgAAAAAAAAAAAAAwAAAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAAgAAAAAAAAAAAAxwAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-10-12T09:12:52.662Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 15,
               "Title": "IApplicationDbContext.cs",
               "DocumentMoniker": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Application\\Common\\Interfaces\\IApplicationDbContext.cs",
               "RelativeDocumentMoniker": "NexusERP.Application\\Common\\Interfaces\\IApplicationDbContext.cs",
@@ -119,12 +312,11 @@
               "RelativeToolTip": "NexusERP.Application\\Common\\Interfaces\\IApplicationDbContext.cs",
               "ViewState": "AgIAAAcAAAAAAAAAAAAzwAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-10-12T09:12:37.272Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-10-12T09:12:37.272Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 16,
               "Title": "ICategoryService.cs",
               "DocumentMoniker": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Application\\Categories\\ICategoryService.cs",
               "RelativeDocumentMoniker": "NexusERP.Application\\Categories\\ICategoryService.cs",
@@ -132,12 +324,11 @@
               "RelativeToolTip": "NexusERP.Application\\Categories\\ICategoryService.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-10-12T09:12:29.65Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-10-12T09:12:29.65Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 17,
               "Title": "CategoryService.cs",
               "DocumentMoniker": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Application\\Categories\\CategoryService.cs",
               "RelativeDocumentMoniker": "NexusERP.Application\\Categories\\CategoryService.cs",
@@ -145,12 +336,11 @@
               "RelativeToolTip": "NexusERP.Application\\Categories\\CategoryService.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-10-12T09:12:28.799Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-10-12T09:12:28.799Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 18,
               "Title": "CategoryDtos.cs",
               "DocumentMoniker": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Application\\Categories\\CategoryDtos.cs",
               "RelativeDocumentMoniker": "NexusERP.Application\\Categories\\CategoryDtos.cs",
@@ -158,12 +348,11 @@
               "RelativeToolTip": "NexusERP.Application\\Categories\\CategoryDtos.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-10-12T09:12:28.139Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-10-12T09:12:28.139Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 13,
               "Title": "AuthService.cs",
               "DocumentMoniker": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Application\\Auth\\AuthService.cs",
               "RelativeDocumentMoniker": "NexusERP.Application\\Auth\\AuthService.cs",
@@ -176,7 +365,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 19,
               "Title": "AuthDtos.cs",
               "DocumentMoniker": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Application\\Auth\\AuthDtos.cs",
               "RelativeDocumentMoniker": "NexusERP.Application\\Auth\\AuthDtos.cs",
@@ -184,12 +373,11 @@
               "RelativeToolTip": "NexusERP.Application\\Auth\\AuthDtos.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-10-12T09:11:59.383Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-10-12T09:11:59.383Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 7,
+              "DocumentIndex": 20,
               "Title": "20261012090139_AddDictionaries.cs",
               "DocumentMoniker": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Infrastructure\\Persistence\\Migrations\\20261012090139_AddDictionaries.cs",
               "RelativeDocumentMoniker": "NexusERP.Infrastructure\\Persistence\\Migrations\\20261012090139_AddDictionaries.cs",
@@ -197,24 +385,11 @@
               "RelativeToolTip": "NexusERP.Infrastructure\\Persistence\\Migrations\\20261012090139_AddDictionaries.cs",
               "ViewState": "AgIAAB8AAAAAAAAAAAAIwCoAAAAjAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-10-12T09:01:59.924Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-10-12T09:01:59.924Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 11,
-              "Title": "CompanyConfiguration.cs",
-              "DocumentMoniker": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Infrastructure\\Persistence\\Configurations\\CompanyConfiguration.cs",
-              "RelativeDocumentMoniker": "NexusERP.Infrastructure\\Persistence\\Configurations\\CompanyConfiguration.cs",
-              "ToolTip": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Infrastructure\\Persistence\\Configurations\\CompanyConfiguration.cs",
-              "RelativeToolTip": "NexusERP.Infrastructure\\Persistence\\Configurations\\CompanyConfiguration.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-10-12T09:01:46.673Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 12,
+              "DocumentIndex": 21,
               "Title": "NexusERP.Infrastructure.csproj",
               "DocumentMoniker": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Infrastructure\\NexusERP.Infrastructure.csproj",
               "RelativeDocumentMoniker": "NexusERP.Infrastructure\\NexusERP.Infrastructure.csproj",
@@ -226,43 +401,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 10,
-              "Title": "appsettings.json",
-              "DocumentMoniker": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Api\\appsettings.json",
-              "RelativeDocumentMoniker": "NexusERP.Api\\appsettings.json",
-              "ToolTip": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Api\\appsettings.json",
-              "RelativeToolTip": "NexusERP.Api\\appsettings.json",
-              "ViewState": "AgIAAAYAAAAAAAAAAAAAwBEAAAABAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-              "WhenOpened": "2026-10-12T08:54:35.148Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 9,
-              "Title": "appsettings.Development.json",
-              "DocumentMoniker": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Api\\appsettings.Development.json",
-              "RelativeDocumentMoniker": "NexusERP.Api\\appsettings.Development.json",
-              "ToolTip": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Api\\appsettings.Development.json",
-              "RelativeToolTip": "NexusERP.Api\\appsettings.Development.json",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-              "WhenOpened": "2026-10-12T08:54:32.092Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 8,
-              "Title": "AppDbContext.cs",
-              "DocumentMoniker": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Infrastructure\\Persistence\\AppDbContext.cs",
-              "RelativeDocumentMoniker": "NexusERP.Infrastructure\\Persistence\\AppDbContext.cs",
-              "ToolTip": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Infrastructure\\Persistence\\AppDbContext.cs",
-              "RelativeToolTip": "NexusERP.Infrastructure\\Persistence\\AppDbContext.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-10-12T08:18:28.645Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 13,
+              "DocumentIndex": 22,
               "Title": "JwtTokenGenerator.cs",
               "DocumentMoniker": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Infrastructure\\Authentication\\JwtTokenGenerator.cs",
               "RelativeDocumentMoniker": "NexusERP.Infrastructure\\Authentication\\JwtTokenGenerator.cs",
@@ -274,19 +413,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 16,
-              "Title": "AppClaimTypes.cs",
-              "DocumentMoniker": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Application\\Common\\AppClaimTypes.cs",
-              "RelativeDocumentMoniker": "NexusERP.Application\\Common\\AppClaimTypes.cs",
-              "ToolTip": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Application\\Common\\AppClaimTypes.cs",
-              "RelativeToolTip": "NexusERP.Application\\Common\\AppClaimTypes.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-10-12T08:32:11.564Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 14,
+              "DocumentIndex": 23,
               "Title": "JwtSettings.cs",
               "DocumentMoniker": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Infrastructure\\Authentication\\JwtSettings.cs",
               "RelativeDocumentMoniker": "NexusERP.Infrastructure\\Authentication\\JwtSettings.cs",
@@ -298,19 +425,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 18,
-              "Title": "ApiResponse.cs",
-              "DocumentMoniker": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Application\\Common\\ApiResponse.cs",
-              "RelativeDocumentMoniker": "NexusERP.Application\\Common\\ApiResponse.cs",
-              "ToolTip": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Application\\Common\\ApiResponse.cs",
-              "RelativeToolTip": "NexusERP.Application\\Common\\ApiResponse.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-10-12T08:18:47.275Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 17,
+              "DocumentIndex": 24,
               "Title": "User.cs",
               "DocumentMoniker": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Domain\\Entities\\User.cs",
               "RelativeDocumentMoniker": "NexusERP.Domain\\Entities\\User.cs",
@@ -322,19 +437,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 15,
-              "Title": "DependencyInjection.cs",
-              "DocumentMoniker": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Infrastructure\\DependencyInjection.cs",
-              "RelativeDocumentMoniker": "NexusERP.Infrastructure\\DependencyInjection.cs",
-              "ToolTip": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Infrastructure\\DependencyInjection.cs",
-              "RelativeToolTip": "NexusERP.Infrastructure\\DependencyInjection.cs",
-              "ViewState": "AgIAAAsAAAAAAAAAAAAAwAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-10-12T08:18:33.874Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 20,
+              "DocumentIndex": 26,
               "Title": "Company.cs",
               "DocumentMoniker": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Domain\\Entities\\Company.cs",
               "RelativeDocumentMoniker": "NexusERP.Domain\\Entities\\Company.cs",
@@ -346,7 +449,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 19,
+              "DocumentIndex": 25,
               "Title": "Program.cs",
               "DocumentMoniker": "C:\\Users\\ROG\\Desktop\\NexusERP-Backend\\NexusERP-API\\NexusERP.Api\\Program.cs",
               "RelativeDocumentMoniker": "NexusERP.Api\\Program.cs",

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using NexusERP.Domain.Entities;
 
 namespace NexusERP.Application.Common.Interfaces;
@@ -13,6 +14,12 @@ public interface IApplicationDbContext
     DbSet<Category> Categories { get; }
     DbSet<Unit> Units { get; }
     DbSet<Product> Products { get; }
+    DbSet<Purchase> Purchases { get; }
+    DbSet<PurchaseItem> PurchaseItems { get; }
+    DbSet<Stock> Stocks { get; }
+
+    /// <summary>Used for explicit transactions; implemented by <c>DbContext.Database</c>.</summary>
+    DatabaseFacade Database { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
