@@ -12,5 +12,8 @@ public class CompanyConfiguration : IEntityTypeConfiguration<Company>
 
         builder.Property(c => c.Name).IsRequired().HasMaxLength(200);
         builder.Property(c => c.Voen).HasMaxLength(50);
+        builder.Property(c => c.InviteCode).IsRequired().HasMaxLength(8);
+
+        builder.HasIndex(c => c.InviteCode).IsUnique();
     }
 }
