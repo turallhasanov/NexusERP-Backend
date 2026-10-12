@@ -22,6 +22,7 @@ public static class DependencyInjection
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IOtpVerificationService, OtpVerificationService>();
         services.AddScoped<ICompanyService, CompanyService>();
         services.AddScoped<IWarehouseService, WarehouseService>();
         services.AddScoped<IStoreService, StoreService>();

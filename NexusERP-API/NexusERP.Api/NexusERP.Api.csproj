@@ -1,10 +1,11 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>NexusERP.Api</RootNamespace>
+    <UserSecretsId>6538f8e2-524e-470e-b2df-917ade85341e</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
