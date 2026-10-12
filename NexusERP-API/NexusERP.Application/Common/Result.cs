@@ -5,7 +5,16 @@ public enum ErrorType
     Validation,
     Unauthorized,
     NotFound,
-    Conflict
+    Conflict,
+
+    /// <summary>Authenticated but not allowed yet (e.g. e-mail not confirmed).</summary>
+    Forbidden,
+
+    /// <summary>Asked again too soon (e.g. a new verification code within the cooldown).</summary>
+    TooManyRequests,
+
+    /// <summary>A dependency is down (e.g. the mail server); the request can be retried later.</summary>
+    ServiceUnavailable
 }
 
 /// <summary>Outcome of an application service call: either a response body or an Azerbaijani error message.</summary>
