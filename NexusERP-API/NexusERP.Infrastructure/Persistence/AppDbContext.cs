@@ -11,6 +11,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Warehouse> Warehouses => Set<Warehouse>();
     public DbSet<Store> Stores => Set<Store>();
     public DbSet<Customer> Customers => Set<Customer>();
+    public DbSet<Category> Categories => Set<Category>();
+    public DbSet<Unit> Units => Set<Unit>();
+    public DbSet<Product> Products => Set<Product>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

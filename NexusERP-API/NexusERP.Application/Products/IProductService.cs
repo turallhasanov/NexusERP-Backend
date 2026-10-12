@@ -1,0 +1,10 @@
+using NexusERP.Application.Common;
+
+namespace NexusERP.Application.Products;
+
+public interface IProductService
+{
+    Task<Result<ItemsResponseDto<ProductDto>>> GetAllAsync(string companyId, CancellationToken cancellationToken);
+    Task<Result<ProductLookupResponseDto>> GetByBarcodeAsync(string companyId, string barcode, CancellationToken cancellationToken);
+    Task<Result<ProductResponseDto>> CreateAsync(string companyId, CreateProductRequestDto request, CancellationToken cancellationToken);
+}

@@ -1,8 +1,11 @@
 using Microsoft.Extensions.DependencyInjection;
 using NexusERP.Application.Auth;
+using NexusERP.Application.Categories;
 using NexusERP.Application.Companies;
 using NexusERP.Application.Customers;
+using NexusERP.Application.Products;
 using NexusERP.Application.Stores;
+using NexusERP.Application.Units;
 using NexusERP.Application.Warehouses;
 
 namespace NexusERP.Application;
@@ -16,6 +19,9 @@ public static class DependencyInjection
         services.AddScoped<IWarehouseService, WarehouseService>();
         services.AddScoped<IStoreService, StoreService>();
         services.AddScoped<ICustomerService, CustomerService>();
+        services.AddScoped<ICategoryService, CategoryService>();
+        services.AddScoped<IUnitService, UnitService>();
+        services.AddScoped<IProductService, ProductService>();
 
         return services;
     }
