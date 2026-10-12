@@ -1,4 +1,6 @@
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
@@ -57,6 +59,9 @@ builder.Services.AddAuthorization();
 
 builder.Services
     .AddControllers()
+    // Enums go over the wire as camelCase names ("draft", "approved") rather than numbers.
+    .AddJsonOptions(options =>
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)))
     .ConfigureApiBehaviorOptions(options =>
     {
         // Missing or malformed JSON bodies: return our error shape instead of ProblemDetails.
