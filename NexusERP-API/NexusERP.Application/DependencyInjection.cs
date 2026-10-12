@@ -3,9 +3,11 @@ using NexusERP.Application.Auth;
 using NexusERP.Application.Categories;
 using NexusERP.Application.Companies;
 using NexusERP.Application.Customers;
+using NexusERP.Application.Dashboard;
 using NexusERP.Application.Inventory;
 using NexusERP.Application.Products;
 using NexusERP.Application.Purchases;
+using NexusERP.Application.Reports;
 using NexusERP.Application.Sales;
 using NexusERP.Application.Stores;
 using NexusERP.Application.Units;
@@ -28,6 +30,8 @@ public static class DependencyInjection
         services.AddScoped<IPurchaseService, PurchaseService>();
         services.AddScoped<IInventoryService, InventoryService>();
         services.AddScoped<ISaleService, SaleService>();
+        services.AddScoped<IDashboardService, DashboardService>();
+        services.AddScoped<IReportService, ReportService>();
 
         return services;
     }
