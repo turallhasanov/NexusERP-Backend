@@ -17,4 +17,12 @@ public class ReportsController(IReportService reportService) : ApiControllerBase
     [HttpGet("top-products")]
     public async Task<IActionResult> GetTopProducts([FromQuery] int? limit, [FromQuery] string? sortBy, CancellationToken cancellationToken) =>
         ToActionResult(await reportService.GetTopProductsAsync(CurrentCompanyId, limit, sortBy, cancellationToken));
+
+    /// <summary>
+    /// Net profit over approved sales and recorded expenses. Both bounds are optional; a date-only
+    /// <paramref name="to"/> includes that whole day.
+    /// </summary>
+    [HttpGet("profit-loss")]
+    public async Task<IActionResult> GetProfitLoss([FromQuery] DateTime? from, [FromQuery] DateTime? to, CancellationToken cancellationToken) =>
+        ToActionResult(await reportService.GetProfitLossAsync(CurrentCompanyId, from, to, cancellationToken));
 }

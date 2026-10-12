@@ -1,9 +1,11 @@
 using Microsoft.Extensions.DependencyInjection;
 using NexusERP.Application.Auth;
+using NexusERP.Application.CashRegisters;
 using NexusERP.Application.Categories;
 using NexusERP.Application.Companies;
 using NexusERP.Application.Customers;
 using NexusERP.Application.Dashboard;
+using NexusERP.Application.Expenses;
 using NexusERP.Application.Inventory;
 using NexusERP.Application.Products;
 using NexusERP.Application.Purchases;
@@ -32,6 +34,9 @@ public static class DependencyInjection
         services.AddScoped<ISaleService, SaleService>();
         services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<IReportService, ReportService>();
+        services.AddScoped<ICashRegisterService, CashRegisterService>();
+        services.AddScoped<IExpenseCategoryService, ExpenseCategoryService>();
+        services.AddScoped<IExpenseService, ExpenseService>();
 
         return services;
     }
