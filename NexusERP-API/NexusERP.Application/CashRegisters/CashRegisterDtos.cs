@@ -49,7 +49,8 @@ public sealed record TransactionDto(
     string? SaleId,
     DocumentRefDto? Sale,
     string? PurchaseId,
-    DocumentRefDto? Purchase)
+    DocumentRefDto? Purchase,
+    string? ExpenseId)
 {
     /// <summary>Server-side projection, loads the transaction and its references in one query.</summary>
     public static readonly Expression<Func<Transaction, TransactionDto>> Projection = t => new TransactionDto(
@@ -65,7 +66,8 @@ public sealed record TransactionDto(
         t.SaleId,
         t.SaleId == null ? null : new DocumentRefDto(t.Sale!.Id, t.Sale.DocumentNumber),
         t.PurchaseId,
-        t.PurchaseId == null ? null : new DocumentRefDto(t.Purchase!.Id, t.Purchase.DocumentNumber));
+        t.PurchaseId == null ? null : new DocumentRefDto(t.Purchase!.Id, t.Purchase.DocumentNumber),
+        t.ExpenseId);
 }
 
 /// <summary>POST /api/cash-registers/transactions → { "ok": true, "id", "transactionType", "amount", ... }</summary>
@@ -82,7 +84,8 @@ public sealed record TransactionResponseDto(
     string? SaleId,
     DocumentRefDto? Sale,
     string? PurchaseId,
-    DocumentRefDto? Purchase) : SuccessResponse
+    DocumentRefDto? Purchase,
+    string? ExpenseId) : SuccessResponse
 {
     public static TransactionResponseDto From(TransactionDto transaction) =>
         new(
@@ -98,5 +101,6 @@ public sealed record TransactionResponseDto(
             transaction.SaleId,
             transaction.Sale,
             transaction.PurchaseId,
-            transaction.Purchase);
+            transaction.Purchase,
+            transaction.ExpenseId);
 }

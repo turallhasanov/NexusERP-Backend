@@ -27,10 +27,14 @@ public class Transaction
     /// <summary>Purchase this payment is for, if any.</summary>
     public string? PurchaseId { get; set; }
 
+    /// <summary>Expense that created this transaction, if any. Set by POST /api/expenses only.</summary>
+    public string? ExpenseId { get; set; }
+
     public DateTime TransactionDate { get; set; }
 
     public CashRegister? CashRegister { get; set; }
     public CashRegister? TargetCashRegister { get; set; }
     public Sale? Sale { get; set; }
     public Purchase? Purchase { get; set; }
+    public Expense? Expense { get; set; }
 }

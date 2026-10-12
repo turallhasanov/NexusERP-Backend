@@ -219,34 +219,13 @@ public class CashRegisterService(IApplicationDbContext db) : ICashRegisterServic
             ?? await TryDecreaseAsync(companyId, sourceId, amount, cancellationToken);
     }
 
-    /// <summary>
-    /// The limit check is part of the UPDATE's WHERE clause, so check and add are one atomic statement.
-    /// Returns an error message, or null on success.
-    /// </summary>
-    private async Task<string?> TryIncreaseAsync(string companyId, string cashRegisterId, decimal amount, CancellationToken cancellationToken)
-    {
-        var limit = MaxMoney - amount;
+    /// <summary>Returns an error message, or null on success.</summary>
+    private async Task<string?> TryIncreaseAsync(string companyId, string cashRegisterId, decimal amount, CancellationToken cancellationToken) =>
+        await CashRegisterBalance.TryIncreaseAsync(db, companyId, cashRegisterId, amount, cancellationToken) ? null : BalanceOverflow;
 
-        var updated = await db.CashRegisters
-            .Where(c => c.Id == cashRegisterId && c.CompanyId == companyId && c.Balance <= limit)
-            .ExecuteUpdateAsync(s => s.SetProperty(c => c.Balance, c => c.Balance + amount), cancellationToken);
-
-        return updated == 1 ? null : BalanceOverflow;
-    }
-
-    /// <summary>
-    /// The balance check is part of the UPDATE's WHERE clause, so two payments taking the last money out of
-    /// a register at once cannot both succeed and drive the balance negative.
-    /// Returns an error message, or null on success.
-    /// </summary>
-    private async Task<string?> TryDecreaseAsync(string companyId, string cashRegisterId, decimal amount, CancellationToken cancellationToken)
-    {
-        var updated = await db.CashRegisters
-            .Where(c => c.Id == cashRegisterId && c.CompanyId == companyId && c.Balance >= amount)
-            .ExecuteUpdateAsync(s => s.SetProperty(c => c.Balance, c => c.Balance - amount), cancellationToken);
-
-        return updated == 1 ? null : InsufficientFunds;
-    }
+    /// <summary>Returns an error message, or null on success.</summary>
+    private async Task<string?> TryDecreaseAsync(string companyId, string cashRegisterId, decimal amount, CancellationToken cancellationToken) =>
+        await CashRegisterBalance.TryDecreaseAsync(db, companyId, cashRegisterId, amount, cancellationToken) ? null : InsufficientFunds;
 
     private static string? NullIfEmpty(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();

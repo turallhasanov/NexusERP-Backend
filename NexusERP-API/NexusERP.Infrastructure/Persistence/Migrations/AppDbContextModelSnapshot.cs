@@ -144,6 +144,73 @@ namespace NexusERP.Infrastructure.Persistence.Migrations
                     b.ToTable("Customers");
                 });
 
+            modelBuilder.Entity("NexusERP.Domain.Entities.Expense", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("CashRegisterId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("CompanyId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("ExpenseCategoryId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("ExpenseDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CashRegisterId");
+
+                    b.HasIndex("ExpenseCategoryId");
+
+                    b.HasIndex("CompanyId", "ExpenseDate");
+
+                    b.ToTable("Expenses");
+                });
+
+            modelBuilder.Entity("NexusERP.Domain.Entities.ExpenseCategory", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("CompanyId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
+
+                    b.ToTable("ExpenseCategories");
+                });
+
             modelBuilder.Entity("NexusERP.Domain.Entities.Product", b =>
                 {
                     b.Property<string>("Id")
@@ -463,6 +530,9 @@ namespace NexusERP.Infrastructure.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<string>("ExpenseId")
+                        .HasColumnType("nvarchar(450)");
+
                     b.Property<string>("PurchaseId")
                         .HasColumnType("nvarchar(450)");
 
@@ -481,6 +551,10 @@ namespace NexusERP.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CashRegisterId");
+
+                    b.HasIndex("ExpenseId")
+                        .IsUnique()
+                        .HasFilter("[ExpenseId] IS NOT NULL");
 
                     b.HasIndex("PurchaseId");
 
@@ -611,6 +685,40 @@ namespace NexusERP.Infrastructure.Persistence.Migrations
                 });
 
             modelBuilder.Entity("NexusERP.Domain.Entities.Customer", b =>
+                {
+                    b.HasOne("NexusERP.Domain.Entities.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("NexusERP.Domain.Entities.Expense", b =>
+                {
+                    b.HasOne("NexusERP.Domain.Entities.CashRegister", "CashRegister")
+                        .WithMany()
+                        .HasForeignKey("CashRegisterId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("NexusERP.Domain.Entities.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("NexusERP.Domain.Entities.ExpenseCategory", "ExpenseCategory")
+                        .WithMany()
+                        .HasForeignKey("ExpenseCategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CashRegister");
+
+                    b.Navigation("ExpenseCategory");
+                });
+
+            modelBuilder.Entity("NexusERP.Domain.Entities.ExpenseCategory", b =>
                 {
                     b.HasOne("NexusERP.Domain.Entities.Company", null)
                         .WithMany()
@@ -791,6 +899,11 @@ namespace NexusERP.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("NexusERP.Domain.Entities.Expense", "Expense")
+                        .WithOne("Transaction")
+                        .HasForeignKey("NexusERP.Domain.Entities.Transaction", "ExpenseId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("NexusERP.Domain.Entities.Purchase", "Purchase")
                         .WithMany()
                         .HasForeignKey("PurchaseId")
@@ -807,6 +920,8 @@ namespace NexusERP.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("CashRegister");
+
+                    b.Navigation("Expense");
 
                     b.Navigation("Purchase");
 
@@ -839,6 +954,11 @@ namespace NexusERP.Infrastructure.Persistence.Migrations
                         .HasForeignKey("CompanyId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("NexusERP.Domain.Entities.Expense", b =>
+                {
+                    b.Navigation("Transaction");
                 });
 
             modelBuilder.Entity("NexusERP.Domain.Entities.Purchase", b =>

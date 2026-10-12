@@ -21,6 +21,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<SaleItem> SaleItems => Set<SaleItem>();
     public DbSet<CashRegister> CashRegisters => Set<CashRegister>();
     public DbSet<Transaction> Transactions => Set<Transaction>();
+    public DbSet<ExpenseCategory> ExpenseCategories => Set<ExpenseCategory>();
+    public DbSet<Expense> Expenses => Set<Expense>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

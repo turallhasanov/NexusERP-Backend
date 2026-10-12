@@ -43,5 +43,12 @@ public class TransactionConfiguration : IEntityTypeConfiguration<Transaction>
             .HasForeignKey(t => t.PurchaseId)
             .IsRequired(false)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // One transaction per expense; the unique index on a nullable column is filtered to non-null values.
+        builder.HasOne(t => t.Expense)
+            .WithOne(e => e.Transaction)
+            .HasForeignKey<Transaction>(t => t.ExpenseId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }
