@@ -8,14 +8,16 @@ namespace NexusERP.Application.Sales;
 /// <summary>
 /// Body of POST /api/sales and POST /api/sales/pos-checkout. Fields are nullable so missing values reach our
 /// own validation. <c>warehouseId</c> defaults to the store's warehouse, <c>customerId</c> may be omitted for
-/// walk-in customers, and <c>documentDate</c> defaults to now.
+/// walk-in customers, and <c>documentDate</c> defaults to now. <c>cashRegisterId</c> is for POS checkout only:
+/// the sale total is paid into that register.
 /// </summary>
 public sealed record CreateSaleRequestDto(
     string? StoreId,
     string? WarehouseId,
     string? CustomerId,
     DateTime? DocumentDate,
-    IReadOnlyList<SaleItemRequestDto?>? Items);
+    IReadOnlyList<SaleItemRequestDto?>? Items,
+    string? CashRegisterId = null);
 
 /// <summary><c>unitPrice</c> defaults to the product's current sale price.</summary>
 public sealed record SaleItemRequestDto(string? ProductId, decimal? Quantity, decimal? UnitPrice);

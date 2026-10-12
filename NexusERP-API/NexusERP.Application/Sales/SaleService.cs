@@ -1,5 +1,6 @@
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
+using NexusERP.Application.CashRegisters;
 using NexusERP.Application.Common;
 using NexusERP.Application.Common.Interfaces;
 using NexusERP.Domain.Entities;
@@ -51,6 +52,10 @@ public class SaleService(IApplicationDbContext db, IStockWriter stockWriter) : I
 
     public async Task<Result<SaleResponseDto>> CreateAsync(string companyId, CreateSaleRequestDto request, CancellationToken cancellationToken)
     {
+        // A draft has not been paid; payment into a register happens only at POS checkout.
+        if (!string.IsNullOrWhiteSpace(request.CashRegisterId))
+            return Result<SaleResponseDto>.Failure(ErrorType.Validation, "Kassa yalnız POS satışında göstərilir.");
+
         var built = await BuildSaleAsync(companyId, request, cancellationToken);
 
         if (!built.IsSuccess)
@@ -115,7 +120,24 @@ public class SaleService(IApplicationDbContext db, IStockWriter stockWriter) : I
         var sale = built.Value!;
         sale.Status = SaleStatus.Approved;
 
-        // Stock decrease and the approved document commit together; on a shortage nothing is saved at all.
+        var cashRegisterId = string.IsNullOrWhiteSpace(request.CashRegisterId) ? null : request.CashRegisterId.Trim();
+
+        if (cashRegisterId is not null)
+        {
+            // Scoped to the caller's company, so another company's register looks exactly like a missing one.
+            var cashRegister = await db.CashRegisters
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.Id == cashRegisterId && c.CompanyId == companyId, cancellationToken);
+
+            if (cashRegister is null)
+                return Result<SaleResponseDto>.Failure(ErrorType.NotFound, "Kassa tapılmadı.");
+
+            if (!cashRegister.IsActive)
+                return Result<SaleResponseDto>.Failure(ErrorType.Validation, "Seçilmiş kassa aktiv deyil.");
+        }
+
+        // Stock decrease, the approved document and the register payment commit together; on a shortage
+        // nothing is saved at all.
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
 
         var shortage = await DecreaseStockAsync(
@@ -125,6 +147,29 @@ public class SaleService(IApplicationDbContext db, IStockWriter stockWriter) : I
             return Result<SaleResponseDto>.Failure(ErrorType.Validation, shortage);
 
         await AddWithNumberAsync(companyId, sale, cancellationToken);
+
+        // A sale of free items has nothing to pay in; a transaction needs a positive amount.
+        if (cashRegisterId is not null && sale.TotalAmount > 0)
+        {
+            // Stock rows are locked before the register row, the same order every time, so this cannot
+            // deadlock with other checkouts.
+            if (!await CashRegisterBalance.TryIncreaseAsync(db, companyId, cashRegisterId, sale.TotalAmount, cancellationToken))
+                return Result<SaleResponseDto>.Failure(ErrorType.Validation, "Kassa balansı həddindən artıq böyük olar.");
+
+            db.Transactions.Add(new Transaction
+            {
+                CompanyId = companyId,
+                CashRegisterId = cashRegisterId,
+                TransactionType = TransactionType.Income,
+                Amount = sale.TotalAmount,
+                Description = $"POS satışı {sale.DocumentNumber}",
+                SaleId = sale.Id,
+                TransactionDate = sale.DocumentDate
+            });
+
+            await db.SaveChangesAsync(cancellationToken);
+        }
+
         await transaction.CommitAsync(cancellationToken);
 
         return SaleResponseDto.From((await FindAsync(companyId, sale.Id, cancellationToken))!);
