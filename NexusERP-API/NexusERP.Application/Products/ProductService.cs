@@ -17,11 +17,29 @@ public class ProductService(IApplicationDbContext db) : IProductService
     // 10^10 random in-store barcodes per company; a collision even once is unlikely, five in a row is not happening.
     private const int MaxBarcodeAttempts = 5;
 
-    public async Task<Result<ItemsResponseDto<ProductDto>>> GetAllAsync(string companyId, CancellationToken cancellationToken)
+    public async Task<Result<ItemsResponseDto<ProductDto>>> GetAllAsync(string companyId, string? q, string? categoryId, CancellationToken cancellationToken)
     {
-        var items = await db.Products
+        var query = db.Products
             .AsNoTracking()
-            .Where(p => p.CompanyId == companyId)
+            .Where(p => p.CompanyId == companyId);
+
+        var categoryFilter = categoryId?.Trim();
+
+        if (!string.IsNullOrEmpty(categoryFilter))
+        {
+            if (!await db.Categories.AnyAsync(c => c.Id == categoryFilter && c.CompanyId == companyId, cancellationToken))
+                return Result<ItemsResponseDto<ProductDto>>.Failure(ErrorType.NotFound, "Kateqoriya tapılmadı.");
+
+            query = query.Where(p => p.CategoryId == categoryFilter);
+        }
+
+        // Matches name, code or barcode anywhere in the text; case follows the column collation (insensitive by default).
+        var search = q?.Trim();
+
+        if (!string.IsNullOrEmpty(search))
+            query = query.Where(p => p.Name.Contains(search) || p.Code.Contains(search) || p.Barcode.Contains(search));
+
+        var items = await query
             .OrderBy(p => p.Code.Length).ThenBy(p => p.Code)
             .Select(ProductDto.Projection)
             .ToListAsync(cancellationToken);
@@ -98,7 +116,7 @@ public class ProductService(IApplicationDbContext db) : IProductService
         }
         else
         {
-            barcode = await GenerateBarcodeAsync(companyId, cancellationToken);
+            barcode = await GenerateUniqueBarcodeAsync(companyId, cancellationToken);
         }
 
         var product = new Product
@@ -124,10 +142,13 @@ public class ProductService(IApplicationDbContext db) : IProductService
         return ProductResponseDto.From(product, category, unit);
     }
 
+    public async Task<Result<GeneratedBarcodeResponseDto>> GenerateBarcodeAsync(string companyId, CancellationToken cancellationToken) =>
+        new GeneratedBarcodeResponseDto(await GenerateUniqueBarcodeAsync(companyId, cancellationToken));
+
     private Task<bool> BarcodeExistsAsync(string companyId, string barcode, CancellationToken cancellationToken) =>
         db.Products.AnyAsync(p => p.CompanyId == companyId && p.Barcode == barcode, cancellationToken);
 
-    private async Task<string> GenerateBarcodeAsync(string companyId, CancellationToken cancellationToken)
+    private async Task<string> GenerateUniqueBarcodeAsync(string companyId, CancellationToken cancellationToken)
     {
         for (var attempt = 1; ; attempt++)
         {

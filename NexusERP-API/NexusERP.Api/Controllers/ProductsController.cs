@@ -9,9 +9,14 @@ namespace NexusERP.Api.Controllers;
 [Authorize, RequireCompany]
 public class ProductsController(IProductService productService) : ApiControllerBase
 {
+    /// <summary>All products, optionally filtered: <paramref name="q"/> searches name, code and barcode.</summary>
     [HttpGet]
-    public async Task<IActionResult> GetAll(CancellationToken cancellationToken) =>
-        ToActionResult(await productService.GetAllAsync(CurrentCompanyId, cancellationToken));
+    public async Task<IActionResult> GetAll([FromQuery] string? q, [FromQuery] string? categoryId, CancellationToken cancellationToken) =>
+        ToActionResult(await productService.GetAllAsync(CurrentCompanyId, q, categoryId, cancellationToken));
+
+    [HttpGet("generate-barcode")]
+    public async Task<IActionResult> GenerateBarcode(CancellationToken cancellationToken) =>
+        ToActionResult(await productService.GenerateBarcodeAsync(CurrentCompanyId, cancellationToken));
 
     [HttpGet("barcode/{barcode}")]
     public async Task<IActionResult> GetByBarcode(string barcode, CancellationToken cancellationToken) =>
