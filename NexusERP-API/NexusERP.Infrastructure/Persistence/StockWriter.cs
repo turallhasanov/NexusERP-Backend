@@ -24,4 +24,17 @@ public class StockWriter(AppDbContext db) : IStockWriter
                 VALUES ({id}, {companyId}, {warehouseId}, {productId}, {quantity});
             """, cancellationToken);
     }
+
+    /// <summary>
+    /// The balance check is part of the UPDATE's WHERE clause, so check and subtract are one atomic
+    /// statement: two tills selling the last units at once cannot both succeed and drive stock negative.
+    /// </summary>
+    public async Task<bool> TryDecreaseAsync(string companyId, string warehouseId, string productId, decimal quantity, CancellationToken cancellationToken)
+    {
+        var updated = await db.Stocks
+            .Where(s => s.CompanyId == companyId && s.WarehouseId == warehouseId && s.ProductId == productId && s.Quantity >= quantity)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.Quantity, x => x.Quantity - quantity), cancellationToken);
+
+        return updated == 1;
+    }
 }

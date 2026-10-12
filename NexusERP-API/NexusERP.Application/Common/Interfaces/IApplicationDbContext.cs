@@ -17,6 +17,8 @@ public interface IApplicationDbContext
     DbSet<Purchase> Purchases { get; }
     DbSet<PurchaseItem> PurchaseItems { get; }
     DbSet<Stock> Stocks { get; }
+    DbSet<Sale> Sales { get; }
+    DbSet<SaleItem> SaleItems { get; }
 
     /// <summary>Used for explicit transactions; implemented by <c>DbContext.Database</c>.</summary>
     DatabaseFacade Database { get; }

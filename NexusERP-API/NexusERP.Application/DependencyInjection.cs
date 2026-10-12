@@ -6,6 +6,7 @@ using NexusERP.Application.Customers;
 using NexusERP.Application.Inventory;
 using NexusERP.Application.Products;
 using NexusERP.Application.Purchases;
+using NexusERP.Application.Sales;
 using NexusERP.Application.Stores;
 using NexusERP.Application.Units;
 using NexusERP.Application.Warehouses;
@@ -26,6 +27,7 @@ public static class DependencyInjection
         services.AddScoped<IProductService, ProductService>();
         services.AddScoped<IPurchaseService, PurchaseService>();
         services.AddScoped<IInventoryService, InventoryService>();
+        services.AddScoped<ISaleService, SaleService>();
 
         return services;
     }

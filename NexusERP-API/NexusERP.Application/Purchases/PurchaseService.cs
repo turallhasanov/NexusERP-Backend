@@ -202,15 +202,15 @@ public class PurchaseService(IApplicationDbContext db, IStockWriter stockWriter)
             .SingleAsync(cancellationToken);
 
         // One increment per product. A fixed order means concurrent approvals lock stock rows in the
-        // same sequence, which avoids deadlocks between them.
+        // same sequence, which avoids deadlocks between them. Sorted in memory (ordinal), not in SQL,
+        // so the order matches sale approval's exactly regardless of database collation.
         var increments = await db.PurchaseItems
             .Where(i => i.PurchaseId == id)
             .GroupBy(i => i.ProductId)
             .Select(g => new { ProductId = g.Key, Quantity = g.Sum(i => i.Quantity) })
-            .OrderBy(g => g.ProductId)
             .ToListAsync(cancellationToken);
 
-        foreach (var increment in increments)
+        foreach (var increment in increments.OrderBy(i => i.ProductId, StringComparer.Ordinal))
             await stockWriter.IncreaseAsync(companyId, warehouseId, increment.ProductId, increment.Quantity, cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
