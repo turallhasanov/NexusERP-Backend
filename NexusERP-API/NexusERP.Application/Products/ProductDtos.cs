@@ -46,6 +46,12 @@ public sealed record ProductDto(
         new UnitDto(p.Unit!.Id, p.Unit.Name, p.Unit.ShortName));
 }
 
+/// <summary>
+/// GET /api/products/generate-barcode → { "ok": true, "barcode": "20..." }: a free in-store EAN-13 to prefill
+/// the product form. Not reserved; POST /api/products still rejects it if another product takes it first.
+/// </summary>
+public sealed record GeneratedBarcodeResponseDto(string Barcode) : SuccessResponse;
+
 /// <summary>GET /api/products/barcode/{barcode} → { "ok": true, "product": { ... } }</summary>
 public sealed record ProductLookupResponseDto(ProductDto Product) : SuccessResponse;
 
