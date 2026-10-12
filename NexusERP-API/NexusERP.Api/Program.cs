@@ -57,6 +57,17 @@ builder.Services
 
 builder.Services.AddAuthorization();
 
+// The React frontend runs on its own origin (Vite dev server); list allowed origins in "Cors:AllowedOrigins".
+const string FrontendCorsPolicy = "Frontend";
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+    ?? ["http://localhost:5173"];
+
+builder.Services.AddCors(options =>
+    options.AddPolicy(FrontendCorsPolicy, policy => policy
+        .WithOrigins(allowedOrigins)
+        .AllowAnyHeader()
+        .AllowAnyMethod()));
+
 builder.Services
     .AddControllers()
     // Enums go over the wire as camelCase names ("draft", "approved") rather than numbers.
@@ -80,6 +91,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+// Before HTTPS redirection and auth, so preflight (OPTIONS) requests are answered rather than redirected or rejected.
+app.UseCors(FrontendCorsPolicy);
 
 app.UseHttpsRedirection();
 
