@@ -3,7 +3,10 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ApplicationModels;
+using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.IdentityModel.Tokens;
+using NexusERP.Api.Routing;
 using NexusERP.Application;
 using NexusERP.Application.Common;
 using NexusERP.Infrastructure;
@@ -69,7 +72,8 @@ builder.Services.AddCors(options =>
         .AllowAnyMethod()));
 
 builder.Services
-    .AddControllers()
+    .AddControllers(options =>
+        options.Conventions.Add(new RouteTokenTransformerConvention(new KebabCaseParameterTransformer())))
     // Enums go over the wire as camelCase names ("draft", "approved") rather than numbers.
     .AddJsonOptions(options =>
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)))
@@ -81,7 +85,22 @@ builder.Services
     });
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    // Operation ids are "<Controller>_<Action>" without the "Async" suffix (Products_GetAll, Sales_Create, ...).
+    // The controller prefix keeps them unique, since many controllers share action names like GetAll and Create.
+    options.CustomOperationIds(api =>
+        api.ActionDescriptor is ControllerActionDescriptor action
+            ? $"{action.ControllerName}_{TrimAsyncSuffix(action.ActionName)}"
+            : null);
+
+    // api/company is a legacy alias of api/companies kept for existing clients; documenting both
+    // would emit every company operation twice with the same operation id.
+    options.DocInclusionPredicate((_, api) =>
+        api.RelativePath is not { } path
+        || !(path.Equals("api/company", StringComparison.OrdinalIgnoreCase)
+             || path.StartsWith("api/company/", StringComparison.OrdinalIgnoreCase)));
+});
 
 var app = builder.Build();
 
@@ -95,7 +114,11 @@ if (app.Environment.IsDevelopment())
 // Before HTTPS redirection and auth, so preflight (OPTIONS) requests are answered rather than redirected or rejected.
 app.UseCors(FrontendCorsPolicy);
 
-app.UseHttpsRedirection();
+// In Development the frontend calls the plain-HTTP endpoint; a 307 to HTTPS would turn every cross-origin call into a redirect.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -103,3 +126,6 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+static string TrimAsyncSuffix(string name) =>
+    name.EndsWith("Async", StringComparison.Ordinal) ? name[..^"Async".Length] : name;
