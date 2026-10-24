@@ -6,16 +6,18 @@ namespace NexusERP.Application.Admin;
 
 /// <summary>
 /// Body of POST /api/admin/tenants: the company and its first admin account. The account is created
-/// confirmed, so the admin can sign in with this password straight away.
+/// confirmed, so the admin can sign in with this password straight away. <c>AdminRole</c> is "itadmin"
+/// (the default when omitted) or "admin".
 /// Fields are nullable so missing values reach our own validation instead of the framework's.
 /// </summary>
-public sealed record CreateTenantRequestDto(string? Name, string? Voen, string? AdminName, string? AdminEmail, string? AdminPassword);
+public sealed record CreateTenantRequestDto(
+    string? Name, string? Voen, string? AdminName, string? AdminEmail, string? AdminPassword, string? AdminRole = null);
 
 /// <summary>Body of PUT /api/admin/tenants/{id}/status: { "status": "active" | "passive" | "suspended" }.</summary>
 public sealed record UpdateTenantStatusRequestDto(CompanyStatus? Status);
 
-/// <summary>One row of the tenant list.</summary>
-public sealed record TenantDto(string Id, string Name, string? Voen, DateTime CreatedAt, CompanyStatus Status, int UserCount);
+/// <summary>One row of the tenant list, with the invite code its staff join with.</summary>
+public sealed record TenantDto(string Id, string Name, string? Voen, DateTime CreatedAt, CompanyStatus Status, int UserCount, string InviteCode);
 
 /// <summary>PUT /api/admin/tenants/{id}/status → { "ok": true, "tenant": { ... } }</summary>
 public sealed record TenantResponseDto(TenantDto Tenant) : SuccessResponse;
@@ -24,6 +26,15 @@ public sealed record TenantUserDto(string Id, string Name, string Email, string 
 
 /// <summary>POST /api/admin/tenants → { "ok": true, "tenant": { ... }, "admin": { ... } }</summary>
 public sealed record CreateTenantResponseDto(TenantDto Tenant, TenantUserDto Admin) : SuccessResponse;
+
+/// <summary>
+/// Body of POST /api/admin/tenants/{id}/users: a new account placed straight into the company, created confirmed.
+/// <c>Role</c> is "itadmin" or "staff". Fields are nullable so missing values reach our own validation.
+/// </summary>
+public sealed record CreateTenantUserRequestDto(string? FullName, string? Email, string? Password, string? Role);
+
+/// <summary>POST /api/admin/tenants/{id}/users → { "ok": true, "user": { ... } }</summary>
+public sealed record TenantUserResponseDto(TenantUserDto User) : SuccessResponse;
 
 /// <summary>Current record counts of a company (active and inactive rows alike).</summary>
 public sealed record TenantCountsDto(int Products, int Warehouses, int Stores, int Customers, int Sales, int Purchases, int Expenses);

@@ -37,6 +37,15 @@ public class AdminController(IPlatformAdminService adminService) : ApiController
     public async Task<IActionResult> CreateTenant([FromBody] CreateTenantRequestDto request, CancellationToken cancellationToken) =>
         ToActionResult(await adminService.CreateTenantAsync(request, cancellationToken));
 
+    /// <summary>Adds a confirmed account to the company as its IT admin ("itadmin") or as staff.</summary>
+    [HttpPost("tenants/{id}/users")]
+    [ProducesResponseType<TenantUserResponseDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> CreateTenantUser(string id, [FromBody] CreateTenantUserRequestDto request, CancellationToken cancellationToken) =>
+        ToActionResult(await adminService.CreateTenantUserAsync(id, request, cancellationToken));
+
     /// <summary>Activates, deactivates (passive) or suspends a company. Its users are signed out on their next request.</summary>
     [HttpPut("tenants/{id}/status")]
     [ProducesResponseType<TenantResponseDto>(StatusCodes.Status200OK)]

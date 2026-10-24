@@ -30,7 +30,7 @@ public class PlatformAdminService(
         var tenants = await db.Companies
             .AsNoTracking()
             .OrderByDescending(c => c.CreatedAt)
-            .Select(c => new TenantDto(c.Id, c.Name, c.Voen, c.CreatedAt, c.Status, db.Users.Count(u => u.CompanyId == c.Id)))
+            .Select(c => new TenantDto(c.Id, c.Name, c.Voen, c.CreatedAt, c.Status, db.Users.Count(u => u.CompanyId == c.Id), c.InviteCode))
             .ToListAsync(cancellationToken);
 
         return new ItemsResponseDto<TenantDto>(tenants);
@@ -73,11 +73,13 @@ public class PlatformAdminService(
         var voen = string.IsNullOrWhiteSpace(request.Voen) ? null : request.Voen.Trim();
         var adminName = request.AdminName?.Trim();
         var adminEmail = AccountRules.NormalizeEmail(request.AdminEmail);
+        var adminRole = string.IsNullOrWhiteSpace(request.AdminRole) ? AppRoles.ITAdmin : request.AdminRole.Trim().ToLowerInvariant();
 
         var error = CompanyService.ValidateProfile(name, voen)
             ?? AccountRules.ValidateName(adminName)
             ?? AccountRules.ValidateEmail(adminEmail)
-            ?? AccountRules.ValidatePassword(request.AdminPassword);
+            ?? AccountRules.ValidatePassword(request.AdminPassword)
+            ?? (AppRoles.CompanyManagerRoles.Contains(adminRole) ? null : "İlk istifadəçinin rolu \"itadmin\" və ya \"admin\" olmalıdır.");
 
         if (error is not null)
             return Result<CreateTenantResponseDto>.Failure(ErrorType.Validation, error);
@@ -98,7 +100,7 @@ public class PlatformAdminService(
             Name = adminName!,
             Email = adminEmail!,
             PasswordHash = passwordHasher.Hash(request.AdminPassword!),
-            Role = AppRoles.Admin,
+            Role = adminRole,
             IsEmailConfirmed = true
         };
 
@@ -122,8 +124,61 @@ public class PlatformAdminService(
         logger.LogInformation("Platform admin created company {CompanyId} with admin {UserId}", company.Id, admin.Id);
 
         return new CreateTenantResponseDto(
-            new TenantDto(company.Id, company.Name, company.Voen, company.CreatedAt, company.Status, 1),
+            new TenantDto(company.Id, company.Name, company.Voen, company.CreatedAt, company.Status, 1, company.InviteCode),
             new TenantUserDto(admin.Id, admin.Name, admin.Email, admin.Role, admin.IsActive, admin.IsEmailConfirmed, admin.CreatedAt));
+    }
+
+    /// <summary>Creates a confirmed account inside an existing company, as its IT admin or as staff.</summary>
+    public async Task<Result<TenantUserResponseDto>> CreateTenantUserAsync(
+        string tenantId, CreateTenantUserRequestDto request, CancellationToken cancellationToken)
+    {
+        var fullName = request.FullName?.Trim();
+        var email = AccountRules.NormalizeEmail(request.Email);
+        var role = request.Role?.Trim().ToLowerInvariant();
+
+        var error = AccountRules.ValidateName(fullName)
+            ?? AccountRules.ValidateEmail(email)
+            ?? AccountRules.ValidatePassword(request.Password)
+            ?? (role is AppRoles.ITAdmin or AppRoles.Staff ? null : "Rol \"itadmin\" və ya \"staff\" olmalıdır.");
+
+        if (error is not null)
+            return Result<TenantUserResponseDto>.Failure(ErrorType.Validation, error);
+
+        if (!await db.Companies.AnyAsync(c => c.Id == tenantId, cancellationToken))
+            return Result<TenantUserResponseDto>.Failure(ErrorType.NotFound, TenantNotFound);
+
+        if (email == AuthService.DemoEmail || await db.Users.AnyAsync(u => u.Email == email, cancellationToken))
+            return Result<TenantUserResponseDto>.Failure(ErrorType.Conflict, EmailTaken);
+
+        var user = new User
+        {
+            CompanyId = tenantId,
+            Name = fullName!,
+            Email = email!,
+            PasswordHash = passwordHasher.Hash(request.Password!),
+            Role = role!,
+            IsEmailConfirmed = true
+        };
+
+        db.Users.Add(user);
+
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            // Same race as in CreateTenantAsync: the unique index on Email lets only one through.
+            if (await db.Users.AsNoTracking().AnyAsync(u => u.Email == email, cancellationToken))
+                return Result<TenantUserResponseDto>.Failure(ErrorType.Conflict, EmailTaken);
+
+            throw;
+        }
+
+        logger.LogInformation("Platform admin added user {UserId} to company {CompanyId} as {Role}", user.Id, tenantId, user.Role);
+
+        return new TenantUserResponseDto(
+            new TenantUserDto(user.Id, user.Name, user.Email, user.Role, user.IsActive, user.IsEmailConfirmed, user.CreatedAt));
     }
 
     public async Task<Result<TenantResponseDto>> UpdateStatusAsync(string tenantId, UpdateTenantStatusRequestDto request, CancellationToken cancellationToken)
@@ -145,7 +200,7 @@ public class PlatformAdminService(
 
         var userCount = await db.Users.CountAsync(u => u.CompanyId == tenantId, cancellationToken);
 
-        return new TenantResponseDto(new TenantDto(company.Id, company.Name, company.Voen, company.CreatedAt, company.Status, userCount));
+        return new TenantResponseDto(new TenantDto(company.Id, company.Name, company.Voen, company.CreatedAt, company.Status, userCount, company.InviteCode));
     }
 
     public async Task<Result<DashboardSummaryResponseDto>> GetTenantDashboardSummaryAsync(

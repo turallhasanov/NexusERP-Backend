@@ -97,7 +97,9 @@ public partial class AuthService(
             Name = name!,
             Email = email!,
             PasswordHash = passwordHasher.Hash(request.Password!),
-            Role = AppRoles.Admin,
+            // Someone who signs up is about to register a company, and its founder is the IT admin.
+            // Joining with an invite code replaces this with staff.
+            Role = AppRoles.ITAdmin,
             IsEmailConfirmed = false
         };
 

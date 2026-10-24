@@ -12,7 +12,8 @@ public class CompanyService(IApplicationDbContext db, IJwtTokenGenerator jwtToke
     internal const int NameMaxLength = 200;
     internal const int VoenMaxLength = 50;
 
-    public const string AdminRole = AppRoles.Admin;
+    /// <summary>Role of the user who creates a company.</summary>
+    public const string FounderRole = AppRoles.ITAdmin;
     public const string StaffRole = AppRoles.Staff;
 
     private const string AlreadyInCompany = "Sizin artıq şirkətiniz var.";
@@ -35,7 +36,7 @@ public class CompanyService(IApplicationDbContext db, IJwtTokenGenerator jwtToke
         return new CurrentCompanyResponseDto(company is null ? null : CompanyDto.From(company));
     }
 
-    /// <summary>Creates a company with a fresh invite code; the creator becomes its admin.</summary>
+    /// <summary>Creates a company with a fresh invite code; the creator becomes its IT admin.</summary>
     public async Task<Result<CompanyResponseDto>> CreateAsync(string userId, CreateCompanyRequestDto request, CancellationToken cancellationToken)
     {
         var name = request.Name?.Trim();
@@ -69,7 +70,7 @@ public class CompanyService(IApplicationDbContext db, IJwtTokenGenerator jwtToke
             .Where(u => u.Id == userId && u.CompanyId == null)
             .ExecuteUpdateAsync(s => s
                 .SetProperty(u => u.CompanyId, company.Id)
-                .SetProperty(u => u.Role, AdminRole), cancellationToken);
+                .SetProperty(u => u.Role, FounderRole), cancellationToken);
 
         if (assigned == 0)
             return Result<CompanyResponseDto>.Failure(ErrorType.Conflict, AlreadyInCompany);
@@ -78,7 +79,7 @@ public class CompanyService(IApplicationDbContext db, IJwtTokenGenerator jwtToke
 
         // Mirror the stored values for the new token; nothing is saved through the tracked entity.
         user.CompanyId = company.Id;
-        user.Role = AdminRole;
+        user.Role = FounderRole;
 
         return ToResponse(company, user);
     }
@@ -146,6 +147,48 @@ public class CompanyService(IApplicationDbContext db, IJwtTokenGenerator jwtToke
         return company is null
             ? Result<MyCompanyResponseDto>.Failure(ErrorType.NotFound, "Şirkət tapılmadı.")
             : new MyCompanyResponseDto(company);
+    }
+
+    public async Task<Result<ItemsResponseDto<CompanyUserDto>>> GetUsersAsync(string companyId, CancellationToken cancellationToken)
+    {
+        var users = await db.Users
+            .AsNoTracking()
+            .Where(u => u.CompanyId == companyId)
+            .OrderBy(u => u.CreatedAt)
+            .Select(u => new CompanyUserDto(u.Id, u.Name, u.Email, u.Role, u.IsActive, u.CreatedAt))
+            .ToListAsync(cancellationToken);
+
+        return new ItemsResponseDto<CompanyUserDto>(users);
+    }
+
+    /// <summary>
+    /// Gives a user of the company the role admin, itadmin or staff. The new role is in the user's token from
+    /// their next sign-in (or company switch); until then the old token keeps the old role.
+    /// </summary>
+    public async Task<Result<CompanyUserResponseDto>> UpdateUserRoleAsync(
+        string currentUserId, string companyId, string userId, UpdateCompanyUserRoleRequestDto request, CancellationToken cancellationToken)
+    {
+        var role = request.Role?.Trim().ToLowerInvariant();
+
+        if (string.IsNullOrEmpty(role) || !AppRoles.CompanyRoles.Contains(role))
+            return Result<CompanyUserResponseDto>.Failure(ErrorType.Validation, "Rol \"admin\", \"itadmin\" və ya \"staff\" olmalıdır.");
+
+        // The caller is a manager, so the company always keeps at least one: they cannot demote themselves.
+        if (userId == currentUserId)
+            return Result<CompanyUserResponseDto>.Failure(ErrorType.Forbidden, "Öz rolunuzu dəyişə bilməzsiniz.");
+
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId && u.CompanyId == companyId, cancellationToken);
+
+        if (user is null)
+            return Result<CompanyUserResponseDto>.Failure(ErrorType.NotFound, "İstifadəçi tapılmadı.");
+
+        if (user.Role != role)
+        {
+            user.Role = role;
+            await db.SaveChangesAsync(cancellationToken);
+        }
+
+        return new CompanyUserResponseDto(CompanyUserDto.From(user));
     }
 
     public Task<CompanyStatus?> GetStatusAsync(string companyId, CancellationToken cancellationToken) =>

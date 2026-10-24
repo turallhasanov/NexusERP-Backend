@@ -9,6 +9,7 @@ public interface IPlatformAdminService
     Task<Result<ItemsResponseDto<TenantDto>>> GetTenantsAsync(CancellationToken cancellationToken);
     Task<Result<TenantDetailsResponseDto>> GetTenantAsync(string tenantId, CancellationToken cancellationToken);
     Task<Result<CreateTenantResponseDto>> CreateTenantAsync(CreateTenantRequestDto request, CancellationToken cancellationToken);
+    Task<Result<TenantUserResponseDto>> CreateTenantUserAsync(string tenantId, CreateTenantUserRequestDto request, CancellationToken cancellationToken);
     Task<Result<TenantResponseDto>> UpdateStatusAsync(string tenantId, UpdateTenantStatusRequestDto request, CancellationToken cancellationToken);
 
     Task<Result<DashboardSummaryResponseDto>> GetTenantDashboardSummaryAsync(
