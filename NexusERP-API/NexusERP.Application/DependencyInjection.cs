@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using NexusERP.Application.Admin;
 using NexusERP.Application.Auth;
 using NexusERP.Application.CashRegisters;
 using NexusERP.Application.Categories;
@@ -12,6 +13,7 @@ using NexusERP.Application.Purchases;
 using NexusERP.Application.Reports;
 using NexusERP.Application.Sales;
 using NexusERP.Application.Stores;
+using NexusERP.Application.SystemInfo;
 using NexusERP.Application.Units;
 using NexusERP.Application.Warehouses;
 
@@ -38,6 +40,8 @@ public static class DependencyInjection
         services.AddScoped<ICashRegisterService, CashRegisterService>();
         services.AddScoped<IExpenseCategoryService, ExpenseCategoryService>();
         services.AddScoped<IExpenseService, ExpenseService>();
+        services.AddScoped<ISystemInfoService, SystemInfoService>();
+        services.AddScoped<IPlatformAdminService, PlatformAdminService>();
 
         return services;
     }

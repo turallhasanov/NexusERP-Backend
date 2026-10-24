@@ -2,19 +2,23 @@ using Microsoft.EntityFrameworkCore;
 using NexusERP.Application.Common;
 using NexusERP.Application.Common.Interfaces;
 using NexusERP.Domain.Entities;
+using NexusERP.Domain.Enums;
 
 namespace NexusERP.Application.Companies;
 
 public class CompanyService(IApplicationDbContext db, IJwtTokenGenerator jwtTokenGenerator) : ICompanyService
 {
     // Must match the column lengths in CompanyConfiguration.
-    private const int NameMaxLength = 200;
-    private const int VoenMaxLength = 50;
+    internal const int NameMaxLength = 200;
+    internal const int VoenMaxLength = 50;
 
-    public const string AdminRole = "admin";
-    public const string StaffRole = "staff";
+    public const string AdminRole = AppRoles.Admin;
+    public const string StaffRole = AppRoles.Staff;
 
     private const string AlreadyInCompany = "Sizin artıq şirkətiniz var.";
+
+    // Creating or joining would turn the platform account into a company user.
+    private const string PlatformAdminCannotJoin = "Platforma administratoru şirkətə daxil ola bilməz.";
 
     public async Task<Result<CurrentCompanyResponseDto>> GetForUserAsync(string userId, CancellationToken cancellationToken)
     {
@@ -37,24 +41,21 @@ public class CompanyService(IApplicationDbContext db, IJwtTokenGenerator jwtToke
         var name = request.Name?.Trim();
         var voen = string.IsNullOrWhiteSpace(request.Voen) ? null : request.Voen.Trim();
 
-        if (string.IsNullOrEmpty(name))
-            return Result<CompanyResponseDto>.Failure(ErrorType.Validation, "Şirkət adı tələb olunur.");
-
-        if (name.Length > NameMaxLength)
-            return Result<CompanyResponseDto>.Failure(ErrorType.Validation, $"Şirkət adı {NameMaxLength} simvoldan uzun ola bilməz.");
-
-        if (voen?.Length > VoenMaxLength)
-            return Result<CompanyResponseDto>.Failure(ErrorType.Validation, $"VÖEN {VoenMaxLength} simvoldan uzun ola bilməz.");
+        if (ValidateProfile(name, voen) is { } profileError)
+            return Result<CompanyResponseDto>.Failure(ErrorType.Validation, profileError);
 
         var user = await db.Users.FindAsync([userId], cancellationToken);
 
         if (user is null)
             return Result<CompanyResponseDto>.Failure(ErrorType.NotFound, "İstifadəçi tapılmadı.");
 
+        if (user.Role == AppRoles.SuperAdmin)
+            return Result<CompanyResponseDto>.Failure(ErrorType.Forbidden, PlatformAdminCannotJoin);
+
         if (user.CompanyId is not null)
             return Result<CompanyResponseDto>.Failure(ErrorType.Conflict, AlreadyInCompany);
 
-        var company = new Company { Name = name, Voen = voen, InviteCode = await NewInviteCodeAsync(cancellationToken) };
+        var company = new Company { Name = name!, Voen = voen, InviteCode = await NewInviteCodeAsync(db, cancellationToken) };
 
         // The company and the user's assignment commit together; disposing without Commit rolls back.
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
@@ -98,10 +99,16 @@ public class CompanyService(IApplicationDbContext db, IJwtTokenGenerator jwtToke
         if (company is null)
             return Result<CompanyResponseDto>.Failure(ErrorType.NotFound, "Bu dəvət kodu ilə şirkət tapılmadı.");
 
+        if (company.Status != CompanyStatus.Active)
+            return Result<CompanyResponseDto>.Failure(ErrorType.Forbidden, "Bu şirkət hazırda aktiv deyil. Ona qoşulmaq mümkün deyil.");
+
         var user = await db.Users.FindAsync([userId], cancellationToken);
 
         if (user is null)
             return Result<CompanyResponseDto>.Failure(ErrorType.NotFound, "İstifadəçi tapılmadı.");
+
+        if (user.Role == AppRoles.SuperAdmin)
+            return Result<CompanyResponseDto>.Failure(ErrorType.Forbidden, PlatformAdminCannotJoin);
 
         if (user.CompanyId is not null)
             return Result<CompanyResponseDto>.Failure(ErrorType.Conflict, AlreadyInCompany);
@@ -141,11 +148,30 @@ public class CompanyService(IApplicationDbContext db, IJwtTokenGenerator jwtToke
             : new MyCompanyResponseDto(company);
     }
 
-    private CompanyResponseDto ToResponse(Company company, User user) =>
-        new(company.Id, company.Name, company.Voen, company.InviteCode, user.Role, jwtTokenGenerator.GenerateToken(user));
+    public Task<CompanyStatus?> GetStatusAsync(string companyId, CancellationToken cancellationToken) =>
+        db.Companies
+            .AsNoTracking()
+            .Where(c => c.Id == companyId)
+            .Select(c => (CompanyStatus?)c.Status)
+            .FirstOrDefaultAsync(cancellationToken);
+
+    /// <summary>Checks an already trimmed name and VÖEN (null when empty); shared with platform admin tenant creation.</summary>
+    internal static string? ValidateProfile(string? name, string? voen)
+    {
+        if (string.IsNullOrEmpty(name))
+            return "Şirkət adı tələb olunur.";
+
+        if (name.Length > NameMaxLength)
+            return $"Şirkət adı {NameMaxLength} simvoldan uzun ola bilməz.";
+
+        if (voen?.Length > VoenMaxLength)
+            return $"VÖEN {VoenMaxLength} simvoldan uzun ola bilməz.";
+
+        return null;
+    }
 
     // A collision is about one in 10^12 per company; the unique index still guards the race between check and insert.
-    private async Task<string> NewInviteCodeAsync(CancellationToken cancellationToken)
+    internal static async Task<string> NewInviteCodeAsync(IApplicationDbContext db, CancellationToken cancellationToken)
     {
         while (true)
         {
@@ -155,4 +181,7 @@ public class CompanyService(IApplicationDbContext db, IJwtTokenGenerator jwtToke
                 return code;
         }
     }
+
+    private CompanyResponseDto ToResponse(Company company, User user) =>
+        new(company.Id, company.Name, company.Voen, company.InviteCode, user.Role, jwtTokenGenerator.GenerateToken(user));
 }

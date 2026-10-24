@@ -88,6 +88,9 @@ namespace NexusERP.Infrastructure.Persistence.Migrations
                     b.Property<string>("Id")
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("InviteCode")
                         .IsRequired()
                         .HasMaxLength(8)
@@ -97,6 +100,9 @@ namespace NexusERP.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
 
                     b.Property<string>("Voen")
                         .HasMaxLength(50)

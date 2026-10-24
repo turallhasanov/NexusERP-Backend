@@ -6,17 +6,21 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApplicationModels;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.IdentityModel.Tokens;
+using NexusERP.Api.Middlewares;
 using NexusERP.Api.Routing;
 using NexusERP.Application;
 using NexusERP.Application.Common;
+using NexusERP.Application.SystemInfo;
 using NexusERP.Infrastructure;
 using NexusERP.Infrastructure.Authentication;
+using NexusERP.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices(builder.Configuration, builder.Environment.IsDevelopment());
+builder.Services.AddOptions<SystemInfoSettings>().Bind(builder.Configuration.GetSection(SystemInfoSettings.SectionName));
 
 var jwtSettings = builder.Configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>()
     ?? throw new InvalidOperationException($"'{JwtSettings.SectionName}' section is not configured.");
@@ -73,7 +77,11 @@ builder.Services.AddCors(options =>
 
 builder.Services
     .AddControllers(options =>
-        options.Conventions.Add(new RouteTokenTransformerConvention(new KebabCaseParameterTransformer())))
+    {
+        options.Conventions.Add(new RouteTokenTransformerConvention(new KebabCaseParameterTransformer()));
+        // Platform administrators viewing a company (impersonation tokens) may read but never write.
+        options.Filters.Add<ImpersonationReadOnlyFilter>();
+    })
     // Enums go over the wire as camelCase names ("draft", "approved") rather than numbers.
     .AddJsonOptions(options =>
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)))
@@ -103,6 +111,9 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 var app = builder.Build();
+
+// Creates the platform administrator from the "SuperAdmin" section (if configured) before serving requests.
+await app.Services.SeedSuperAdminAsync();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

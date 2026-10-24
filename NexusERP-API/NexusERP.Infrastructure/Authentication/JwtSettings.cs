@@ -9,4 +9,7 @@ public class JwtSettings
     public string Issuer { get; init; } = string.Empty;
     public string Audience { get; init; } = string.Empty;
     public int ExpiryMinutes { get; init; } = 60;
+
+    /// <summary>Lifetime of the read-only tokens platform administrators get to view a company.</summary>
+    public int ImpersonationExpiryMinutes { get; init; } = 60;
 }
