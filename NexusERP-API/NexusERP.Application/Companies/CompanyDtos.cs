@@ -20,7 +20,7 @@ public sealed record CurrentCompanyResponseDto(CompanyDto? Company) : SuccessRes
 /// <summary>
 /// POST /api/company (create) and POST /api/companies/join → { "ok": true, "id", "name", "voen", "inviteCode",
 /// "role", "token" }. <c>token</c> is a fresh JWT carrying the companyId claim and the user's new role
-/// ("admin" for the creator, "staff" for someone who joined); the old token has neither.
+/// ("itadmin" for the creator, "staff" for someone who joined); the old token has neither.
 /// </summary>
 public sealed record CompanyResponseDto(string Id, string Name, string? Voen, string InviteCode, string Role, string Token) : SuccessResponse;
 
@@ -29,3 +29,15 @@ public sealed record MyCompanyDto(string Id, string Name, string? Voen, string I
 
 /// <summary>GET /api/companies/my-company → { "ok": true, "company": { ... } }</summary>
 public sealed record MyCompanyResponseDto(MyCompanyDto Company) : SuccessResponse;
+
+/// <summary>One user of the company, as its managers see it.</summary>
+public sealed record CompanyUserDto(string Id, string Name, string Email, string Role, bool IsActive, DateTime CreatedAt)
+{
+    public static CompanyUserDto From(User user) => new(user.Id, user.Name, user.Email, user.Role, user.IsActive, user.CreatedAt);
+}
+
+/// <summary>Body of PUT /api/companies/users/{id}/role: { "role": "admin" | "itadmin" | "staff" }.</summary>
+public sealed record UpdateCompanyUserRoleRequestDto(string? Role);
+
+/// <summary>PUT /api/companies/users/{id}/role → { "ok": true, "user": { ... } }</summary>
+public sealed record CompanyUserResponseDto(CompanyUserDto User) : SuccessResponse;

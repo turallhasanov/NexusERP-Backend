@@ -21,4 +21,22 @@ public class CategoriesController(ICategoryService categoryService) : ApiControl
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Create([FromBody] CreateCategoryRequestDto request, CancellationToken cancellationToken) =>
         ToActionResult(await categoryService.CreateAsync(CurrentCompanyId, request, cancellationToken));
+
+    /// <summary>Renames the category. Admins and IT admins only; staff get 403.</summary>
+    [HttpPut("{id}")]
+    [Authorize(Roles = AppRoles.CompanyManagers)]
+    [ProducesResponseType<CategoryResponseDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Update(string id, [FromBody] UpdateCategoryRequestDto request, CancellationToken cancellationToken) =>
+        ToActionResult(await categoryService.UpdateAsync(CurrentCompanyId, id, request, cancellationToken));
+
+    /// <summary>Deletes a category no product uses (409 otherwise). Admins and IT admins only; staff get 403.</summary>
+    [HttpDelete("{id}")]
+    [Authorize(Roles = AppRoles.CompanyManagers)]
+    [ProducesResponseType<SuccessResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Delete(string id, CancellationToken cancellationToken) =>
+        ToActionResult(await categoryService.DeleteAsync(CurrentCompanyId, id, cancellationToken));
 }

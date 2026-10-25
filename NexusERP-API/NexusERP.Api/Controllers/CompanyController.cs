@@ -37,12 +37,30 @@ public class CompanyController(ICompanyService companyService) : ApiControllerBa
     public async Task<IActionResult> Join([FromBody] JoinCompanyRequestDto request, CancellationToken cancellationToken) =>
         ToActionResult(await companyService.JoinAsync(CurrentUserId, request, cancellationToken));
 
-    /// <summary>Company profile with the invite code. Admins only; staff get 403.</summary>
+    /// <summary>Company profile with the invite code. Admins and IT admins only; staff get 403.</summary>
     [HttpGet("my-company")]
-    [Authorize(Roles = CompanyService.AdminRole), RequireCompany]
+    [Authorize(Roles = AppRoles.CompanyManagers), RequireCompany]
     [ProducesResponseType<MyCompanyResponseDto>(StatusCodes.Status200OK)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status403Forbidden)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetMyCompany(CancellationToken cancellationToken) =>
         ToActionResult(await companyService.GetMyCompanyAsync(CurrentCompanyId, cancellationToken));
+
+    /// <summary>Users of the company with their roles. Admins and IT admins only.</summary>
+    [HttpGet("users")]
+    [Authorize(Roles = AppRoles.CompanyManagers), RequireCompany]
+    [ProducesResponseType<ItemsResponseDto<CompanyUserDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetUsers(CancellationToken cancellationToken) =>
+        ToActionResult(await companyService.GetUsersAsync(CurrentCompanyId, cancellationToken));
+
+    /// <summary>Assigns admin, itadmin or staff to another user of the company. Admins and IT admins only.</summary>
+    [HttpPut("users/{id}/role")]
+    [Authorize(Roles = AppRoles.CompanyManagers), RequireCompany]
+    [ProducesResponseType<CompanyUserResponseDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateUserRole(string id, [FromBody] UpdateCompanyUserRoleRequestDto request, CancellationToken cancellationToken) =>
+        ToActionResult(await companyService.UpdateUserRoleAsync(CurrentUserId, CurrentCompanyId, id, request, cancellationToken));
 }

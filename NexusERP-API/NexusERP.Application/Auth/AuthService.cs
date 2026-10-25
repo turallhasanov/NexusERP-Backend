@@ -16,15 +16,6 @@ public partial class AuthService(
     public const string DemoEmail = "demo@nexuserp.az";
     private const string DemoUserId = "1";
 
-    // Must match the column lengths in UserConfiguration.
-    private const int NameMaxLength = 150;
-    private const int EmailMaxLength = 150;
-
-    private const int PasswordMinLength = 6;
-
-    // Hashing cost grows with input length; a cap keeps one request from tying up the CPU.
-    private const int PasswordMaxLength = 128;
-
     private const string InvalidCredentials = "E-poçt və ya şifrə yanlışdır.";
     private const string EmailTaken = "Bu e-poçt ünvanı artıq qeydiyyatdan keçib.";
     private const string AccountDisabled = "Hesabınız deaktiv edilib.";
@@ -32,10 +23,6 @@ public partial class AuthService(
     private const string AlreadyConfirmed = "E-poçt ünvanınız artıq təsdiqlənib. Daxil ola bilərsiniz.";
     private const string CodeSent = "Təsdiq kodu e-poçt ünvanınıza göndərildi.";
     private const string SendFailed = "E-poçt göndərilə bilmədi. Bir az sonra yenidən cəhd edin.";
-
-    // Deliberately loose: something@domain.tld with no spaces. Real validation is the code sent to it.
-    [GeneratedRegex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$")]
-    private static partial Regex EmailPattern();
 
     [GeneratedRegex(@"^\d{6}$")]
     private static partial Regex CodePattern();
@@ -78,6 +65,9 @@ public partial class AuthService(
         if (!user.IsEmailConfirmed)
             return Result<AuthResponseDto>.Failure(ErrorType.Forbidden, EmailNotConfirmed);
 
+        if (await CompanyBlockedMessageAsync(user, cancellationToken) is { } blocked)
+            return Result<AuthResponseDto>.Failure(ErrorType.Unauthorized, blocked);
+
         return new AuthResponseDto(jwtTokenGenerator.GenerateToken(user), UserDto.From(user));
     }
 
@@ -87,11 +77,8 @@ public partial class AuthService(
         var name = request.FullName?.Trim();
         var email = NormalizeEmail(request.Email);
 
-        if (string.IsNullOrEmpty(name))
-            return Result<CodeStepResponseDto>.Failure(ErrorType.Validation, "Ad Soyad tələb olunur.");
-
-        if (name.Length > NameMaxLength)
-            return Result<CodeStepResponseDto>.Failure(ErrorType.Validation, $"Ad Soyad {NameMaxLength} simvoldan uzun ola bilməz.");
+        if (AccountRules.ValidateName(name) is { } nameError)
+            return Result<CodeStepResponseDto>.Failure(ErrorType.Validation, nameError);
 
         if (ValidateEmail(email) is { } emailError)
             return Result<CodeStepResponseDto>.Failure(ErrorType.Validation, emailError);
@@ -107,10 +94,12 @@ public partial class AuthService(
 
         var user = new User
         {
-            Name = name,
+            Name = name!,
             Email = email!,
             PasswordHash = passwordHasher.Hash(request.Password!),
-            Role = "admin",
+            // Someone who signs up is about to register a company, and its founder is the IT admin.
+            // Joining with an invite code replaces this with staff.
+            Role = AppRoles.ITAdmin,
             IsEmailConfirmed = false
         };
 
@@ -175,6 +164,9 @@ public partial class AuthService(
 
         if (!user.IsActive)
             return Result<AuthResponseDto>.Failure(ErrorType.Unauthorized, AccountDisabled);
+
+        if (await CompanyBlockedMessageAsync(user, cancellationToken) is { } blocked)
+            return Result<AuthResponseDto>.Failure(ErrorType.Unauthorized, blocked);
 
         return new AuthResponseDto(jwtTokenGenerator.GenerateToken(user), UserDto.From(user));
     }
@@ -289,32 +281,9 @@ public partial class AuthService(
         _ => "Kodun vaxtı bitib və ya etibarsızdır. Yeni kod tələb edin."
     };
 
-    private static string? ValidateEmail(string? email)
-    {
-        if (string.IsNullOrEmpty(email))
-            return "E-poçt tələb olunur.";
+    private static string? ValidateEmail(string? email) => AccountRules.ValidateEmail(email);
 
-        if (email.Length > EmailMaxLength)
-            return $"E-poçt {EmailMaxLength} simvoldan uzun ola bilməz.";
-
-        return EmailPattern().IsMatch(email) ? null : "E-poçt ünvanı düzgün deyil.";
-    }
-
-    private static string? ValidatePassword(string? password)
-    {
-        if (string.IsNullOrEmpty(password))
-            return "Şifrə tələb olunur.";
-
-        if (password.Length < PasswordMinLength)
-            return $"Şifrə ən azı {PasswordMinLength} simvol olmalıdır.";
-
-        if (password.Length > PasswordMaxLength)
-            return $"Şifrə {PasswordMaxLength} simvoldan uzun ola bilməz.";
-
-        return password.Any(char.IsLetter) && password.Any(char.IsDigit)
-            ? null
-            : "Şifrədə ən azı bir hərf və bir rəqəm olmalıdır.";
-    }
+    private static string? ValidatePassword(string? password) => AccountRules.ValidatePassword(password);
 
     private static string? ValidateCode(string? code)
     {
@@ -324,7 +293,22 @@ public partial class AuthService(
         return CodePattern().IsMatch(code) ? null : "Kod 6 rəqəmdən ibarət olmalıdır.";
     }
 
-    private static string? NormalizeEmail(string? email) => email?.Trim().ToLowerInvariant();
+    private static string? NormalizeEmail(string? email) => AccountRules.NormalizeEmail(email);
+
+    /// <summary>Users of a passive or suspended company get no token. Platform admins belong to no company.</summary>
+    private async Task<string?> CompanyBlockedMessageAsync(User user, CancellationToken cancellationToken)
+    {
+        if (user.CompanyId is null)
+            return null;
+
+        var status = await db.Companies
+            .AsNoTracking()
+            .Where(c => c.Id == user.CompanyId)
+            .Select(c => (CompanyStatus?)c.Status)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return status is { } current ? AccountRules.CompanyBlockedMessage(current) : null;
+    }
 
     private async Task<User> GetOrCreateDemoUserAsync(CancellationToken cancellationToken)
     {
@@ -337,7 +321,7 @@ public partial class AuthService(
             Id = DemoUserId,
             Name = "Aysel Məmmədova",
             Email = DemoEmail,
-            Role = "admin",
+            Role = AppRoles.Admin,
             IsEmailConfirmed = true
         };
 
