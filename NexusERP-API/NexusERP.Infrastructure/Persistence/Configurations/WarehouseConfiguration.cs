@@ -13,6 +13,8 @@ public class WarehouseConfiguration : IEntityTypeConfiguration<Warehouse>
         builder.Property(w => w.Code).IsRequired().HasMaxLength(20);
         builder.Property(w => w.Name).IsRequired().HasMaxLength(200);
         builder.Property(w => w.Address).HasMaxLength(500);
+        builder.Property(w => w.ResponsiblePerson).HasMaxLength(200);
+        builder.Property(w => w.Capacity).HasPrecision(18, 3);
 
         builder.HasIndex(w => new { w.CompanyId, w.Code }).IsUnique();
 

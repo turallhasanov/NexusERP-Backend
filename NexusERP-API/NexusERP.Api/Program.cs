@@ -112,6 +112,9 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
+// The seeder below queries Users, so the schema must match the model first (Development applies pending migrations).
+await app.Services.MigrateDatabaseAsync(applyPending: app.Environment.IsDevelopment());
+
 // Creates the platform administrator from the "SuperAdmin" section (if configured) before serving requests.
 await app.Services.SeedSuperAdminAsync();
 

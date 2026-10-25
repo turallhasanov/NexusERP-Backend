@@ -116,6 +116,39 @@ namespace NexusERP.Infrastructure.Persistence.Migrations
                     b.ToTable("Companies");
                 });
 
+            modelBuilder.Entity("NexusERP.Domain.Entities.CustomRole", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("CompanyId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Permissions")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("CustomRoles");
+                });
+
             modelBuilder.Entity("NexusERP.Domain.Entities.Customer", b =>
                 {
                     b.Property<string>("Id")
@@ -655,6 +688,9 @@ namespace NexusERP.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("CustomRoleId")
+                        .HasColumnType("nvarchar(450)");
+
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(150)
@@ -687,6 +723,8 @@ namespace NexusERP.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("CompanyId");
 
+                    b.HasIndex("CustomRoleId");
+
                     b.HasIndex("Email")
                         .IsUnique();
 
@@ -702,6 +740,10 @@ namespace NexusERP.Infrastructure.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<decimal?>("Capacity")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("decimal(18,3)");
+
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -716,6 +758,10 @@ namespace NexusERP.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("ResponsiblePerson")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
@@ -737,6 +783,15 @@ namespace NexusERP.Infrastructure.Persistence.Migrations
                 });
 
             modelBuilder.Entity("NexusERP.Domain.Entities.Category", b =>
+                {
+                    b.HasOne("NexusERP.Domain.Entities.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("NexusERP.Domain.Entities.CustomRole", b =>
                 {
                     b.HasOne("NexusERP.Domain.Entities.Company", null)
                         .WithMany()
@@ -1006,6 +1061,11 @@ namespace NexusERP.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("CompanyId")
                         .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("NexusERP.Domain.Entities.CustomRole", null)
+                        .WithMany()
+                        .HasForeignKey("CustomRoleId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("NexusERP.Domain.Entities.Warehouse", b =>

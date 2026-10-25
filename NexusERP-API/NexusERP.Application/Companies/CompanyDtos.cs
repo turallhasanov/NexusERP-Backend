@@ -30,10 +30,13 @@ public sealed record MyCompanyDto(string Id, string Name, string? Voen, string I
 /// <summary>GET /api/companies/my-company → { "ok": true, "company": { ... } }</summary>
 public sealed record MyCompanyResponseDto(MyCompanyDto Company) : SuccessResponse;
 
-/// <summary>One user of the company, as its managers see it.</summary>
-public sealed record CompanyUserDto(string Id, string Name, string Email, string Role, bool IsActive, DateTime CreatedAt)
+/// <summary>One user of the company, as its managers see it. <c>Role</c> is the access level; <c>CustomRoleId</c>
+/// and <c>CustomRoleName</c> are the company's own job role (null when none is given).</summary>
+public sealed record CompanyUserDto(
+    string Id, string Name, string Email, string Role, string? CustomRoleId, string? CustomRoleName, bool IsActive, DateTime CreatedAt)
 {
-    public static CompanyUserDto From(User user) => new(user.Id, user.Name, user.Email, user.Role, user.IsActive, user.CreatedAt);
+    public static CompanyUserDto From(User user, string? customRoleName) =>
+        new(user.Id, user.Name, user.Email, user.Role, user.CustomRoleId, customRoleName, user.IsActive, user.CreatedAt);
 }
 
 /// <summary>Body of PUT /api/companies/users/{id}/role: { "role": "admin" | "itadmin" | "staff" }.</summary>

@@ -24,6 +24,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<ExpenseCategory> ExpenseCategories => Set<ExpenseCategory>();
     public DbSet<Expense> Expenses => Set<Expense>();
     public DbSet<OtpCode> OtpCodes => Set<OtpCode>();
+    public DbSet<CustomRole> CustomRoles => Set<CustomRole>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
