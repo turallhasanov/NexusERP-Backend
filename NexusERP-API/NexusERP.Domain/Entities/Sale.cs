@@ -26,6 +26,20 @@ public class Sale
 
     public SaleStatus Status { get; set; } = SaleStatus.Draft;
 
+    public SaleChannel Channel { get; set; } = SaleChannel.Direct;
+
+    /// <summary>The online store's order number (e.g. KHZ-7Q2MX); unique per company, so a resent order is not duplicated.</summary>
+    public string? ExternalOrderNumber { get; set; }
+
+    /// <summary>
+    /// The end customer of an online order (pərakəndə müştəri bilgiləri). <see cref="CustomerId"/> then points at the
+    /// company's fixed "Khazar Online Müştəri" account, which carries the balance.
+    /// </summary>
+    public string? RetailCustomerName { get; set; }
+    public string? RetailCustomerPhone { get; set; }
+    public string? RetailCustomerEmail { get; set; }
+    public string? RetailCustomerAddress { get; set; }
+
     public Store? Store { get; set; }
     public Warehouse? Warehouse { get; set; }
     public Customer? Customer { get; set; }

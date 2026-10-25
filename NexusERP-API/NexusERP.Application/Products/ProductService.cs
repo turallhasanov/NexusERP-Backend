@@ -85,8 +85,8 @@ public class ProductService(IApplicationDbContext db) : IProductService
         if (barcode?.Length > BarcodeMaxLength)
             return Result<ProductResponseDto>.Failure(ErrorType.Validation, $"Barkod {BarcodeMaxLength} simvoldan uzun ola bilməz.");
 
-        if (request.PurchasePrice is not { } purchasePrice)
-            return Result<ProductResponseDto>.Failure(ErrorType.Validation, "Alış qiyməti tələb olunur.");
+        // Optional: the real purchase price comes from the first approved purchase, which overwrites it.
+        var purchasePrice = request.PurchasePrice ?? 0;
 
         if (request.SalePrice is not { } salePrice)
             return Result<ProductResponseDto>.Failure(ErrorType.Validation, "Satış qiyməti tələb olunur.");

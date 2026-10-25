@@ -26,7 +26,11 @@ public sealed record CreateExpenseRequestDto(
     string? CashRegisterId,
     decimal? Amount,
     DateTime? ExpenseDate,
-    string? Note);
+    string? Note,
+    string? StoreId = null);
+
+/// <summary>Body of PUT /api/expenses/{id}/store; <c>storeId</c> null makes the expense company-wide.</summary>
+public sealed record UpdateExpenseStoreRequestDto(string? StoreId);
 
 /// <summary>Row in GET /api/expenses.</summary>
 public sealed record ExpenseDto(
@@ -38,7 +42,9 @@ public sealed record ExpenseDto(
     ExpenseCategoryRefDto ExpenseCategory,
     string CashRegisterId,
     CodeNameDto CashRegister,
-    string? TransactionId)
+    string? TransactionId,
+    string? StoreId,
+    CodeNameDto? Store)
 {
     /// <summary>Server-side projection, loads the expense and its references in one query.</summary>
     public static readonly Expression<Func<Expense, ExpenseDto>> Projection = e => new ExpenseDto(
@@ -50,7 +56,9 @@ public sealed record ExpenseDto(
         new ExpenseCategoryRefDto(e.ExpenseCategory!.Id, e.ExpenseCategory.Name),
         e.CashRegisterId,
         new CodeNameDto(e.CashRegister!.Id, e.CashRegister.Code, e.CashRegister.Name),
-        e.Transaction == null ? null : e.Transaction.Id);
+        e.Transaction == null ? null : e.Transaction.Id,
+        e.StoreId,
+        e.StoreId == null ? null : new CodeNameDto(e.Store!.Id, e.Store.Code, e.Store.Name));
 }
 
 /// <summary>POST /api/expenses → { "ok": true, "id", "amount", ..., "transactionId" }</summary>
@@ -63,7 +71,9 @@ public sealed record ExpenseResponseDto(
     ExpenseCategoryRefDto ExpenseCategory,
     string CashRegisterId,
     CodeNameDto CashRegister,
-    string? TransactionId) : SuccessResponse
+    string? TransactionId,
+    string? StoreId,
+    CodeNameDto? Store) : SuccessResponse
 {
     public static ExpenseResponseDto From(ExpenseDto expense) =>
         new(
@@ -75,5 +85,7 @@ public sealed record ExpenseResponseDto(
             expense.ExpenseCategory,
             expense.CashRegisterId,
             expense.CashRegister,
-            expense.TransactionId);
+            expense.TransactionId,
+            expense.StoreId,
+            expense.Store);
 }

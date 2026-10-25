@@ -18,6 +18,11 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
 
         builder.HasIndex(c => new { c.CompanyId, c.Code }).IsUnique();
 
+        builder.Property(c => c.SystemKey).HasMaxLength(50);
+        builder.HasIndex(c => new { c.CompanyId, c.SystemKey })
+            .IsUnique()
+            .HasFilter("[SystemKey] IS NOT NULL");
+
         builder.HasOne<Company>()
             .WithMany()
             .HasForeignKey(c => c.CompanyId)

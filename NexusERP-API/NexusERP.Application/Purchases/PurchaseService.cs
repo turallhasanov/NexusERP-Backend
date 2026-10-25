@@ -213,6 +213,25 @@ public class PurchaseService(IApplicationDbContext db, IStockWriter stockWriter)
         foreach (var increment in increments.OrderBy(i => i.ProductId, StringComparer.Ordinal))
             await stockWriter.IncreaseAsync(companyId, warehouseId, increment.ProductId, increment.Quantity, cancellationToken);
 
+        // The product's purchase price becomes what was just paid for it: the unit price of its last line in
+        // this document. Same product order as the stock updates above.
+        var lines = await db.PurchaseItems
+            .Where(i => i.PurchaseId == id)
+            .Select(i => new { i.ProductId, i.LineNumber, i.UnitPrice })
+            .ToListAsync(cancellationToken);
+
+        var lastPrices = lines
+            .GroupBy(l => l.ProductId)
+            .Select(g => g.MaxBy(l => l.LineNumber)!)
+            .OrderBy(l => l.ProductId, StringComparer.Ordinal);
+
+        foreach (var line in lastPrices)
+        {
+            await db.Products
+                .Where(p => p.Id == line.ProductId && p.CompanyId == companyId)
+                .ExecuteUpdateAsync(s => s.SetProperty(p => p.PurchasePrice, line.UnitPrice), cancellationToken);
+        }
+
         await transaction.CommitAsync(cancellationToken);
 
         return PurchaseResponseDto.From((await FindAsync(companyId, id, cancellationToken))!);

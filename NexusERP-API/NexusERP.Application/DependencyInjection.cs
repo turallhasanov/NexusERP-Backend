@@ -7,6 +7,8 @@ using NexusERP.Application.Companies;
 using NexusERP.Application.Customers;
 using NexusERP.Application.Dashboard;
 using NexusERP.Application.Expenses;
+using NexusERP.Application.Employees;
+using NexusERP.Application.Finance;
 using NexusERP.Application.Inventory;
 using NexusERP.Application.Products;
 using NexusERP.Application.Purchases;
@@ -28,6 +30,8 @@ public static class DependencyInjection
         services.AddScoped<IOtpVerificationService, OtpVerificationService>();
         services.AddScoped<ICompanyService, CompanyService>();
         services.AddScoped<IWarehouseService, WarehouseService>();
+        services.AddScoped<IEmployeeService, EmployeeService>();
+        services.AddScoped<IFinanceService, FinanceService>();
         services.AddScoped<IStoreService, StoreService>();
         services.AddScoped<ICustomerService, CustomerService>();
         services.AddScoped<ICategoryService, CategoryService>();

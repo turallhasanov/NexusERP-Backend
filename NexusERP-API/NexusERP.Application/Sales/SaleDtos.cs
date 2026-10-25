@@ -22,6 +22,31 @@ public sealed record CreateSaleRequestDto(
 /// <summary><c>unitPrice</c> defaults to the product's current sale price.</summary>
 public sealed record SaleItemRequestDto(string? ProductId, decimal? Quantity, decimal? UnitPrice);
 
+/// <summary>
+/// Body of POST /api/online-orders: a retail (B2C) order from the Khazar online store. <c>externalOrderNumber</c>
+/// is Khazar's order number; sending the same one again returns the sale already created. The sale is booked to the
+/// company's "Khazar Online Müştəri" account, and <c>customer</c> is recorded on the document.
+/// </summary>
+public sealed record CreateOnlineOrderRequestDto(
+    string? ExternalOrderNumber,
+    string? StoreId,
+    string? WarehouseId,
+    DateTime? DocumentDate,
+    RetailCustomerRequestDto? Customer,
+    IReadOnlyList<SaleItemRequestDto?>? Items);
+
+/// <summary>Either <c>firstName</c>/<c>lastName</c> or <c>fullName</c>; phone, e-mail and address are optional.</summary>
+public sealed record RetailCustomerRequestDto(
+    string? FirstName,
+    string? LastName,
+    string? FullName,
+    string? Phone,
+    string? Email,
+    string? Address);
+
+/// <summary>The end customer of an online order, as stored on the sale; null on other sales.</summary>
+public sealed record RetailCustomerDto(string Name, string? Phone, string? Email, string? Address);
+
 /// <summary>Row in GET /api/sales.</summary>
 public sealed record SaleSummaryDto(
     string Id,
@@ -35,7 +60,10 @@ public sealed record SaleSummaryDto(
     CodeNameDto Warehouse,
     string? CustomerId,
     CodeNameDto? Customer,
-    int ItemCount);
+    int ItemCount,
+    SaleChannel Channel,
+    string? ExternalOrderNumber,
+    RetailCustomerDto? RetailCustomer);
 
 public sealed record SaleItemDto(
     string Id,
@@ -59,7 +87,10 @@ public sealed record SaleDto(
     CodeNameDto Warehouse,
     string? CustomerId,
     CodeNameDto? Customer,
-    IReadOnlyList<SaleItemDto> Items)
+    IReadOnlyList<SaleItemDto> Items,
+    SaleChannel Channel,
+    string? ExternalOrderNumber,
+    RetailCustomerDto? RetailCustomer)
 {
     /// <summary>Server-side projection, loads header, references and lines in one query.</summary>
     public static readonly Expression<Func<Sale, SaleDto>> Projection = s => new SaleDto(
@@ -84,7 +115,12 @@ public sealed record SaleDto(
                 i.Quantity,
                 i.UnitPrice,
                 i.TotalPrice))
-            .ToList());
+            .ToList(),
+        s.Channel,
+        s.ExternalOrderNumber,
+        s.RetailCustomerName == null
+            ? null
+            : new RetailCustomerDto(s.RetailCustomerName, s.RetailCustomerPhone, s.RetailCustomerEmail, s.RetailCustomerAddress));
 }
 
 /// <summary>GET /api/sales/{id} → { "ok": true, "sale": { ... } }</summary>
@@ -103,7 +139,10 @@ public sealed record SaleResponseDto(
     CodeNameDto Warehouse,
     string? CustomerId,
     CodeNameDto? Customer,
-    IReadOnlyList<SaleItemDto> Items) : SuccessResponse
+    IReadOnlyList<SaleItemDto> Items,
+    SaleChannel Channel,
+    string? ExternalOrderNumber,
+    RetailCustomerDto? RetailCustomer) : SuccessResponse
 {
     public static SaleResponseDto From(SaleDto sale) =>
         new(
@@ -118,5 +157,8 @@ public sealed record SaleResponseDto(
             sale.Warehouse,
             sale.CustomerId,
             sale.Customer,
-            sale.Items);
+            sale.Items,
+            sale.Channel,
+            sale.ExternalOrderNumber,
+            sale.RetailCustomer);
 }

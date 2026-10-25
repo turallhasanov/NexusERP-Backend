@@ -7,7 +7,7 @@ namespace NexusERP.Application.Customers;
 
 public class CustomerService(IApplicationDbContext db) : ICustomerService
 {
-    private const string CodePrefix = "KNT";
+    internal const string CodePrefix = "KNT";
 
     // Must match the column lengths in CustomerConfiguration.
     private const int NameMaxLength = 200;

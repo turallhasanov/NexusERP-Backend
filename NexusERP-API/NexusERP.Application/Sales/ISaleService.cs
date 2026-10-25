@@ -9,4 +9,5 @@ public interface ISaleService
     Task<Result<SaleResponseDto>> CreateAsync(string companyId, CreateSaleRequestDto request, CancellationToken cancellationToken);
     Task<Result<SaleResponseDto>> ApproveAsync(string companyId, string id, CancellationToken cancellationToken);
     Task<Result<SaleResponseDto>> PosCheckoutAsync(string companyId, CreateSaleRequestDto request, CancellationToken cancellationToken);
+    Task<Result<SaleResponseDto>> CreateOnlineOrderAsync(string companyId, CreateOnlineOrderRequestDto request, CancellationToken cancellationToken);
 }

@@ -179,6 +179,10 @@ namespace NexusERP.Infrastructure.Persistence.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<string>("SystemKey")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<string>("Voen")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
@@ -188,7 +192,86 @@ namespace NexusERP.Infrastructure.Persistence.Migrations
                     b.HasIndex("CompanyId", "Code")
                         .IsUnique();
 
+                    b.HasIndex("CompanyId", "SystemKey")
+                        .IsUnique()
+                        .HasFilter("[SystemKey] IS NOT NULL");
+
                     b.ToTable("Customers");
+                });
+
+            modelBuilder.Entity("NexusERP.Domain.Entities.Employee", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("CompanyId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Department")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateOnly>("HiredAt")
+                        .HasColumnType("date");
+
+                    b.Property<int?>("LeaveType")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Salary")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<string>("StoreId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateOnly?>("TerminatedAt")
+                        .HasColumnType("date");
+
+                    b.Property<string>("TerminationOrderNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("TerminationReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateOnly?>("VacationEndDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("VacationNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateOnly?>("VacationStartDate")
+                        .HasColumnType("date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StoreId");
+
+                    b.HasIndex("CompanyId", "TerminationOrderNumber")
+                        .IsUnique()
+                        .HasFilter("[TerminationOrderNumber] IS NOT NULL");
+
+                    b.ToTable("Employees");
                 });
 
             modelBuilder.Entity("NexusERP.Domain.Entities.Expense", b =>
@@ -219,11 +302,16 @@ namespace NexusERP.Infrastructure.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<string>("StoreId")
+                        .HasColumnType("nvarchar(450)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CashRegisterId");
 
                     b.HasIndex("ExpenseCategoryId");
+
+                    b.HasIndex("StoreId");
 
                     b.HasIndex("CompanyId", "ExpenseDate");
 
@@ -439,6 +527,9 @@ namespace NexusERP.Infrastructure.Persistence.Migrations
                     b.Property<string>("Id")
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<int>("Channel")
+                        .HasColumnType("int");
+
                     b.Property<string>("CompanyId")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
@@ -453,6 +544,26 @@ namespace NexusERP.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("ExternalOrderNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("RetailCustomerAddress")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("RetailCustomerEmail")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("RetailCustomerName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("RetailCustomerPhone")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
@@ -479,6 +590,10 @@ namespace NexusERP.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("CompanyId", "DocumentNumber")
                         .IsUnique();
+
+                    b.HasIndex("CompanyId", "ExternalOrderNumber")
+                        .IsUnique()
+                        .HasFilter("[ExternalOrderNumber] IS NOT NULL");
 
                     b.ToTable("Sales");
                 });
@@ -810,6 +925,22 @@ namespace NexusERP.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("NexusERP.Domain.Entities.Employee", b =>
+                {
+                    b.HasOne("NexusERP.Domain.Entities.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("NexusERP.Domain.Entities.Store", "Store")
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Store");
+                });
+
             modelBuilder.Entity("NexusERP.Domain.Entities.Expense", b =>
                 {
                     b.HasOne("NexusERP.Domain.Entities.CashRegister", "CashRegister")
@@ -830,9 +961,16 @@ namespace NexusERP.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("NexusERP.Domain.Entities.Store", "Store")
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("CashRegister");
 
                     b.Navigation("ExpenseCategory");
+
+                    b.Navigation("Store");
                 });
 
             modelBuilder.Entity("NexusERP.Domain.Entities.ExpenseCategory", b =>
