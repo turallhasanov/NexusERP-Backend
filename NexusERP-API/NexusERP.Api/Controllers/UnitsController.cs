@@ -19,6 +19,17 @@ public class UnitsController(IUnitService unitService) : ApiControllerBase
     [HttpPost]
     [ProducesResponseType<UnitResponseDto>(StatusCodes.Status200OK)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Create([FromBody] CreateUnitRequestDto request, CancellationToken cancellationToken) =>
         ToActionResult(await unitService.CreateAsync(CurrentCompanyId, request, cancellationToken));
+
+    /// <summary>Renames the unit; 409 when another unit of the company has that name. Admins and IT admins only.</summary>
+    [HttpPut("{id}")]
+    [Authorize(Roles = AppRoles.CompanyManagers)]
+    [ProducesResponseType<UnitResponseDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Update(string id, [FromBody] UpdateUnitRequestDto request, CancellationToken cancellationToken) =>
+        ToActionResult(await unitService.UpdateAsync(CurrentCompanyId, id, request, cancellationToken));
 }

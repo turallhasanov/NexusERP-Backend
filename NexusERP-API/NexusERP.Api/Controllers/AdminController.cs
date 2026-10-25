@@ -54,6 +54,16 @@ public class AdminController(IPlatformAdminService adminService) : ApiController
     public async Task<IActionResult> UpdateTenantStatus(string id, [FromBody] UpdateTenantStatusRequestDto request, CancellationToken cancellationToken) =>
         ToActionResult(await adminService.UpdateStatusAsync(id, request, cancellationToken));
 
+    /// <summary>
+    /// Deletes the company. Soft delete: it keeps its users and records (documents, stock, finance) for integrity,
+    /// leaves the tenant list and analytics, and its users can no longer sign in.
+    /// </summary>
+    [HttpDelete("tenants/{id}")]
+    [ProducesResponseType<SuccessResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteTenant(string id, CancellationToken cancellationToken) =>
+        ToActionResult(await adminService.DeleteTenantAsync(id, cancellationToken));
+
     /// <summary>The company's dashboard figures; same query parameters and rules as GET /api/dashboard/summary.</summary>
     [HttpGet("tenants/{id}/dashboard-summary")]
     [ProducesResponseType<DashboardSummaryResponseDto>(StatusCodes.Status200OK)]
