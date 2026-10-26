@@ -1,11 +1,13 @@
 using Microsoft.EntityFrameworkCore;
+using NexusERP.Application.Audit;
 using NexusERP.Application.Common;
 using NexusERP.Application.Common.Interfaces;
 using NexusERP.Domain.Entities;
+using NexusERP.Domain.Enums;
 
 namespace NexusERP.Application.Products;
 
-public class ProductService(IApplicationDbContext db) : IProductService
+public class ProductService(IApplicationDbContext db, IAuditLogger audit) : IProductService
 {
     private const string CodePrefix = "MHS";
 
@@ -19,9 +21,10 @@ public class ProductService(IApplicationDbContext db) : IProductService
 
     public async Task<Result<ItemsResponseDto<ProductDto>>> GetAllAsync(string companyId, string? q, string? categoryId, CancellationToken cancellationToken)
     {
+        // Deleted products that documents still reference stay in the table as inactive; the catalog hides them.
         var query = db.Products
             .AsNoTracking()
-            .Where(p => p.CompanyId == companyId);
+            .Where(p => p.CompanyId == companyId && p.IsActive);
 
         var categoryFilter = categoryId?.Trim();
 
@@ -84,8 +87,8 @@ public class ProductService(IApplicationDbContext db) : IProductService
         if (barcode?.Length > BarcodeMaxLength)
             return Result<ProductResponseDto>.Failure(ErrorType.Validation, $"Barkod {BarcodeMaxLength} simvoldan uzun ola bilməz.");
 
-        if (request.PurchasePrice is not { } purchasePrice)
-            return Result<ProductResponseDto>.Failure(ErrorType.Validation, "Alış qiyməti tələb olunur.");
+        // Optional: the real purchase price comes from the first approved purchase, which overwrites it.
+        var purchasePrice = request.PurchasePrice ?? 0;
 
         if (request.SalePrice is not { } salePrice)
             return Result<ProductResponseDto>.Failure(ErrorType.Validation, "Satış qiyməti tələb olunur.");
@@ -139,7 +142,49 @@ public class ProductService(IApplicationDbContext db) : IProductService
             code => product.Code = code,
             cancellationToken);
 
+        await audit.LogAsync(companyId, AuditModule.Inventory, AuditAction.Create,
+            $"'{product.Code} · {product.Name}' məhsulu əlavə edildi", cancellationToken);
+
         return ProductResponseDto.From(product, category, unit);
+    }
+
+    /// <summary>
+    /// Refused (409) while any warehouse holds the product. A product that purchases, sales or stock rows still
+    /// reference is deactivated instead of removed, so those documents keep it.
+    /// </summary>
+    public async Task<Result<ProductDeleteResponseDto>> DeleteAsync(string companyId, string id, CancellationToken cancellationToken)
+    {
+        var product = await db.Products.FirstOrDefaultAsync(
+            p => p.Id == id && p.CompanyId == companyId && p.IsActive, cancellationToken);
+
+        if (product is null)
+            return Result<ProductDeleteResponseDto>.Failure(ErrorType.NotFound, "Məhsul tapılmadı.");
+
+        if (await db.Stocks.AnyAsync(s => s.ProductId == id && s.Quantity != 0, cancellationToken))
+            return Result<ProductDeleteResponseDto>.Failure(ErrorType.Conflict, "Anbarda bu məhsulun qalığı var, silinə bilməz.");
+
+        // Purchase and sale lines and stock rows keep restricted foreign keys to the product.
+        var isReferenced =
+            await db.Stocks.AnyAsync(s => s.ProductId == id, cancellationToken) ||
+            await db.PurchaseItems.AnyAsync(i => i.ProductId == id, cancellationToken) ||
+            await db.SaleItems.AnyAsync(i => i.ProductId == id, cancellationToken);
+
+        if (isReferenced)
+            product.IsActive = false;
+        else
+            db.Products.Remove(product);
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        await audit.LogAsync(companyId, AuditModule.Inventory, AuditAction.Delete,
+            isReferenced
+                ? $"'{product.Code} · {product.Name}' məhsulu silindi (sənədlərdə istifadə olunduğu üçün deaktiv edildi)"
+                : $"'{product.Code} · {product.Name}' məhsulu silindi",
+            cancellationToken);
+
+        return isReferenced
+            ? new ProductDeleteResponseDto(true, "Bu məhsula bağlı əməliyyatlar (alış/satış) olduğu üçün silinə bilməz, deaktiv edildi.")
+            : new ProductDeleteResponseDto(false, "Məhsul uğurla silindi.");
     }
 
     public async Task<Result<GeneratedBarcodeResponseDto>> GenerateBarcodeAsync(string companyId, CancellationToken cancellationToken) =>

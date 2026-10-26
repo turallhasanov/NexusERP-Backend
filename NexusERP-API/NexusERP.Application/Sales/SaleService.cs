@@ -1,20 +1,31 @@
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
+using NexusERP.Application.Audit;
 using NexusERP.Application.CashRegisters;
 using NexusERP.Application.Common;
 using NexusERP.Application.Common.Interfaces;
+using NexusERP.Application.Customers;
 using NexusERP.Domain.Entities;
 using NexusERP.Domain.Enums;
 
 namespace NexusERP.Application.Sales;
 
-public class SaleService(IApplicationDbContext db, IStockWriter stockWriter) : ISaleService
+public class SaleService(IApplicationDbContext db, IStockWriter stockWriter, IAuditLogger audit) : ISaleService
 {
     private const string NumberPrefix = "STŞ";
 
     // Upper bounds of decimal(18,2) money and decimal(18,3) quantity columns.
     private const decimal MaxMoney = 9_999_999_999_999_999.99m;
     private const decimal MaxQuantity = 999_999_999_999_999.999m;
+
+    // Online orders: the fixed account they are booked to, and column lengths from SaleConfiguration.
+    private const string OnlineCustomerKey = "khazar-online";
+    private const string OnlineCustomerName = "Khazar Online Müştəri";
+    private const int ExternalOrderNumberMaxLength = 50;
+    private const int RetailNameMaxLength = 200;
+    private const int RetailPhoneMaxLength = 50;
+    private const int RetailEmailMaxLength = 200;
+    private const int RetailAddressMaxLength = 500;
 
     public async Task<Result<ItemsResponseDto<SaleSummaryDto>>> GetAllAsync(string companyId, CancellationToken cancellationToken)
     {
@@ -35,7 +46,12 @@ public class SaleService(IApplicationDbContext db, IStockWriter stockWriter) : I
                 new CodeNameDto(s.Warehouse!.Id, s.Warehouse.Code, s.Warehouse.Name),
                 s.CustomerId,
                 s.CustomerId == null ? null : new CodeNameDto(s.Customer!.Id, s.Customer.Code, s.Customer.Name),
-                s.Items.Count))
+                s.Items.Count,
+                s.Channel,
+                s.ExternalOrderNumber,
+                s.RetailCustomerName == null
+                    ? null
+                    : new RetailCustomerDto(s.RetailCustomerName, s.RetailCustomerPhone, s.RetailCustomerEmail, s.RetailCustomerAddress)))
             .ToListAsync(cancellationToken);
 
         return new ItemsResponseDto<SaleSummaryDto>(items);
@@ -65,6 +81,9 @@ public class SaleService(IApplicationDbContext db, IStockWriter stockWriter) : I
         sale.Status = SaleStatus.Draft;
 
         await AddWithNumberAsync(companyId, sale, cancellationToken);
+
+        await audit.LogAsync(companyId, AuditModule.Retail, AuditAction.Create,
+            $"'{sale.DocumentNumber}' satış qaiməsi yaradıldı ({sale.TotalAmount:0.00} ₼)", cancellationToken);
 
         return SaleResponseDto.From((await FindAsync(companyId, sale.Id, cancellationToken))!);
     }
@@ -107,7 +126,11 @@ public class SaleService(IApplicationDbContext db, IStockWriter stockWriter) : I
 
         await transaction.CommitAsync(cancellationToken);
 
-        return SaleResponseDto.From((await FindAsync(companyId, id, cancellationToken))!);
+        var approvedSale = (await FindAsync(companyId, id, cancellationToken))!;
+        await audit.LogAsync(companyId, AuditModule.Retail, AuditAction.Update,
+            $"'{approvedSale.DocumentNumber}' satış qaiməsi təsdiqləndi ({approvedSale.TotalAmount:0.00} ₼)", cancellationToken);
+
+        return SaleResponseDto.From(approvedSale);
     }
 
     public async Task<Result<SaleResponseDto>> PosCheckoutAsync(string companyId, CreateSaleRequestDto request, CancellationToken cancellationToken)
@@ -172,7 +195,126 @@ public class SaleService(IApplicationDbContext db, IStockWriter stockWriter) : I
 
         await transaction.CommitAsync(cancellationToken);
 
+        await audit.LogAsync(companyId, AuditModule.Retail, AuditAction.Create,
+            $"'{sale.DocumentNumber}' POS satışı edildi ({sale.TotalAmount:0.00} ₼)", cancellationToken);
+
         return SaleResponseDto.From((await FindAsync(companyId, sale.Id, cancellationToken))!);
+    }
+
+    /// <summary>
+    /// A retail order from the online store, saved as a draft sale like one from the sales form (staff approve it,
+    /// which moves stock). Idempotent on <c>externalOrderNumber</c>: a resent order returns the existing sale.
+    /// </summary>
+    public async Task<Result<SaleResponseDto>> CreateOnlineOrderAsync(string companyId, CreateOnlineOrderRequestDto request, CancellationToken cancellationToken)
+    {
+        var externalOrderNumber = request.ExternalOrderNumber?.Trim();
+        var customer = request.Customer;
+        var name = customer?.FullName?.Trim() is { Length: > 0 } fullName
+            ? fullName
+            : string.Join(' ', new[] { customer?.FirstName?.Trim(), customer?.LastName?.Trim() }.Where(p => !string.IsNullOrEmpty(p)));
+        var phone = string.IsNullOrWhiteSpace(customer?.Phone) ? null : customer.Phone.Trim();
+        var email = string.IsNullOrWhiteSpace(customer?.Email) ? null : customer.Email.Trim();
+        var address = string.IsNullOrWhiteSpace(customer?.Address) ? null : customer.Address.Trim();
+
+        var error =
+            string.IsNullOrEmpty(externalOrderNumber) ? "Sifariş nömrəsi tələb olunur."
+            : externalOrderNumber.Length > ExternalOrderNumberMaxLength ? $"Sifariş nömrəsi {ExternalOrderNumberMaxLength} simvoldan uzun ola bilməz."
+            : name.Length == 0 ? "Müştərinin adı tələb olunur."
+            : name.Length > RetailNameMaxLength ? $"Müştərinin adı {RetailNameMaxLength} simvoldan uzun ola bilməz."
+            : phone?.Length > RetailPhoneMaxLength ? $"Telefon {RetailPhoneMaxLength} simvoldan uzun ola bilməz."
+            : email?.Length > RetailEmailMaxLength ? $"E-poçt {RetailEmailMaxLength} simvoldan uzun ola bilməz."
+            : address?.Length > RetailAddressMaxLength ? $"Ünvan {RetailAddressMaxLength} simvoldan uzun ola bilməz."
+            : null;
+
+        if (error is not null)
+            return Result<SaleResponseDto>.Failure(ErrorType.Validation, error);
+
+        if (await FindOnlineOrderAsync(companyId, externalOrderNumber!, cancellationToken) is { } existing)
+            return SaleResponseDto.From(existing);
+
+        var onlineCustomerId = await GetOnlineCustomerIdAsync(companyId, cancellationToken);
+
+        var built = await BuildSaleAsync(
+            companyId,
+            new CreateSaleRequestDto(request.StoreId, request.WarehouseId, onlineCustomerId, request.DocumentDate, request.Items),
+            cancellationToken);
+
+        if (!built.IsSuccess)
+            return Result<SaleResponseDto>.Failure(built.ErrorType, built.Error!);
+
+        var sale = built.Value!;
+        sale.Status = SaleStatus.Draft;
+        sale.Channel = SaleChannel.Online;
+        sale.ExternalOrderNumber = externalOrderNumber;
+        sale.RetailCustomerName = name;
+        sale.RetailCustomerPhone = phone;
+        sale.RetailCustomerEmail = email;
+        sale.RetailCustomerAddress = address;
+
+        try
+        {
+            await AddWithNumberAsync(companyId, sale, cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            // The same order sent twice at once: the unique (company, external number) index lets one through.
+            db.Sales.Entry(sale).State = EntityState.Detached;
+
+            if (await FindOnlineOrderAsync(companyId, externalOrderNumber!, cancellationToken) is { } raced)
+                return SaleResponseDto.From(raced);
+
+            throw;
+        }
+
+        await audit.LogAsync(companyId, AuditModule.Retail, AuditAction.Create,
+            $"Khazar online sifarişi {externalOrderNumber} '{sale.DocumentNumber}' satış qaiməsi kimi qəbul edildi ({sale.TotalAmount:0.00} ₼)",
+            cancellationToken);
+
+        return SaleResponseDto.From((await FindAsync(companyId, sale.Id, cancellationToken))!);
+    }
+
+    private Task<SaleDto?> FindOnlineOrderAsync(string companyId, string externalOrderNumber, CancellationToken cancellationToken) =>
+        db.Sales
+            .AsNoTracking()
+            .Where(s => s.CompanyId == companyId && s.ExternalOrderNumber == externalOrderNumber)
+            .Select(SaleDto.Projection)
+            .FirstOrDefaultAsync(cancellationToken);
+
+    /// <summary>The company's "Khazar Online Müştəri" account, created on the first online order.</summary>
+    private async Task<string> GetOnlineCustomerIdAsync(string companyId, CancellationToken cancellationToken)
+    {
+        var existingId = await db.Customers
+            .Where(c => c.CompanyId == companyId && c.SystemKey == OnlineCustomerKey)
+            .Select(c => c.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (existingId is not null)
+            return existingId;
+
+        var customer = new Customer { CompanyId = companyId, Name = OnlineCustomerName, SystemKey = OnlineCustomerKey };
+        db.Customers.Add(customer);
+
+        try
+        {
+            await SequentialCode.AssignAndSaveAsync(
+                db,
+                db.Customers.Where(c => c.CompanyId == companyId).Select(c => c.Code),
+                CustomerService.CodePrefix,
+                code => customer.Code = code,
+                cancellationToken);
+
+            return customer.Id;
+        }
+        catch (DbUpdateException)
+        {
+            // Two first orders at once: the unique (company, system key) index keeps one account.
+            db.Customers.Entry(customer).State = EntityState.Detached;
+
+            return await db.Customers
+                .Where(c => c.CompanyId == companyId && c.SystemKey == OnlineCustomerKey)
+                .Select(c => c.Id)
+                .FirstAsync(cancellationToken);
+        }
     }
 
     /// <summary>

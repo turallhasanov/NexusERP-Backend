@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using NexusERP.Application.Audit;
 using NexusERP.Application.CashRegisters;
 using NexusERP.Application.Common;
 using NexusERP.Application.Common.Interfaces;
@@ -7,7 +8,7 @@ using NexusERP.Domain.Enums;
 
 namespace NexusERP.Application.Expenses;
 
-public class ExpenseService(IApplicationDbContext db) : IExpenseService
+public class ExpenseService(IApplicationDbContext db, IAuditLogger audit) : IExpenseService
 {
     // Must match the column lengths in ExpenseConfiguration.
     private const int NoteMaxLength = 500;
@@ -32,6 +33,7 @@ public class ExpenseService(IApplicationDbContext db) : IExpenseService
         var expenseCategoryId = request.ExpenseCategoryId?.Trim();
         var cashRegisterId = request.CashRegisterId?.Trim();
         var note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim();
+        var storeId = string.IsNullOrWhiteSpace(request.StoreId) ? null : request.StoreId.Trim();
 
         if (string.IsNullOrEmpty(expenseCategoryId))
             return Result<ExpenseResponseDto>.Failure(ErrorType.Validation, "Xərc kateqoriyası seçilməlidir.");
@@ -75,6 +77,9 @@ public class ExpenseService(IApplicationDbContext db) : IExpenseService
         if (!cashRegister.IsActive)
             return Result<ExpenseResponseDto>.Failure(ErrorType.Validation, "Seçilmiş kassa aktiv deyil.");
 
+        if (storeId is not null && !await db.Stores.AnyAsync(s => s.Id == storeId && s.CompanyId == companyId && s.IsActive, cancellationToken))
+            return Result<ExpenseResponseDto>.Failure(ErrorType.NotFound, "Mağaza tapılmadı.");
+
         // Balance deduction, expense and its transaction commit together or not at all; disposing without Commit rolls back.
         await using var dbTransaction = await db.Database.BeginTransactionAsync(cancellationToken);
 
@@ -90,7 +95,8 @@ public class ExpenseService(IApplicationDbContext db) : IExpenseService
             CashRegisterId = cashRegister.Id,
             Amount = amount,
             ExpenseDate = expenseDate,
-            Note = note
+            Note = note,
+            StoreId = storeId
         };
 
         db.Expenses.Add(expense);
@@ -115,6 +121,43 @@ public class ExpenseService(IApplicationDbContext db) : IExpenseService
             .Select(ExpenseDto.Projection)
             .SingleAsync(cancellationToken);
 
+        await audit.LogAsync(companyId, AuditModule.Finance, AuditAction.Create,
+            $"{created.Amount:0.00} ₼ məxaric yazıldı ({created.ExpenseCategory.Name}, {created.CashRegister.Name})", cancellationToken);
+
         return ExpenseResponseDto.From(created);
+    }
+
+    /// <summary>
+    /// Moves the expense to another store (or makes it company-wide), for store profit. Amount, category and cash
+    /// register stay: the money already left that register through the expense's transaction.
+    /// </summary>
+    public async Task<Result<ExpenseResponseDto>> UpdateStoreAsync(string companyId, string id, UpdateExpenseStoreRequestDto request, CancellationToken cancellationToken)
+    {
+        var storeId = string.IsNullOrWhiteSpace(request.StoreId) ? null : request.StoreId.Trim();
+
+        var expense = await db.Expenses.FirstOrDefaultAsync(e => e.Id == id && e.CompanyId == companyId, cancellationToken);
+
+        if (expense is null)
+            return Result<ExpenseResponseDto>.Failure(ErrorType.NotFound, "Xərc tapılmadı.");
+
+        // A closed store is fine to keep, but not to move an expense to.
+        if (storeId is not null && storeId != expense.StoreId
+            && !await db.Stores.AnyAsync(s => s.Id == storeId && s.CompanyId == companyId && s.IsActive, cancellationToken))
+            return Result<ExpenseResponseDto>.Failure(ErrorType.NotFound, "Mağaza tapılmadı.");
+
+        expense.StoreId = storeId;
+        await db.SaveChangesAsync(cancellationToken);
+
+        var updated = await db.Expenses
+            .AsNoTracking()
+            .Where(e => e.Id == id)
+            .Select(ExpenseDto.Projection)
+            .SingleAsync(cancellationToken);
+
+        await audit.LogAsync(companyId, AuditModule.Finance, AuditAction.Update,
+            $"{updated.Amount:0.00} ₼ məxaricin ({updated.ExpenseCategory.Name}) mağazası dəyişdirildi: {updated.Store?.Name ?? "ümumi"}",
+            cancellationToken);
+
+        return ExpenseResponseDto.From(updated);
     }
 }

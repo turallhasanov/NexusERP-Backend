@@ -3,17 +3,34 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ApplicationModels;
+using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.IdentityModel.Tokens;
+using NexusERP.Api.Middlewares;
+using NexusERP.Api.Routing;
 using NexusERP.Application;
 using NexusERP.Application.Common;
+using NexusERP.Application.SystemInfo;
 using NexusERP.Infrastructure;
 using NexusERP.Infrastructure.Authentication;
+using NexusERP.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddApplicationServices();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<NexusERP.Application.Common.Interfaces.ICurrentUserContext, NexusERP.Api.Services.HttpCurrentUserContext>();
+
+// Live support chat: same JSON shape as the REST API (camelCase, enums as names).
+builder.Services
+    .AddSignalR()
+    .AddJsonProtocol(options =>
+        options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)));
+builder.Services.AddSingleton<Microsoft.AspNetCore.SignalR.IUserIdProvider, NexusERP.Api.Hubs.SubClaimUserIdProvider>();
+builder.Services.AddScoped<NexusERP.Application.Support.ISupportNotifier, NexusERP.Api.Hubs.SignalRSupportNotifier>();
 builder.Services.AddInfrastructureServices(builder.Configuration, builder.Environment.IsDevelopment());
+builder.Services.AddOptions<SystemInfoSettings>().Bind(builder.Configuration.GetSection(SystemInfoSettings.SectionName));
 
 var jwtSettings = builder.Configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>()
     ?? throw new InvalidOperationException($"'{JwtSettings.SectionName}' section is not configured.");
@@ -41,6 +58,16 @@ builder.Services
         // Default 401/403 have empty bodies; keep them in the { "ok": false, "error": "..." } shape.
         options.Events = new JwtBearerEvents
         {
+            // Browsers cannot set headers on WebSockets: the hub's token comes as ?access_token=, on /hubs only.
+            OnMessageReceived = context =>
+            {
+                var token = context.Request.Query["access_token"];
+
+                if (!string.IsNullOrEmpty(token) && context.HttpContext.Request.Path.StartsWithSegments("/hubs"))
+                    context.Token = token;
+
+                return Task.CompletedTask;
+            },
             OnChallenge = async context =>
             {
                 context.HandleResponse();
@@ -69,7 +96,12 @@ builder.Services.AddCors(options =>
         .AllowAnyMethod()));
 
 builder.Services
-    .AddControllers()
+    .AddControllers(options =>
+    {
+        options.Conventions.Add(new RouteTokenTransformerConvention(new KebabCaseParameterTransformer()));
+        // Platform administrators viewing a company (impersonation tokens) may read but never write.
+        options.Filters.Add<ImpersonationReadOnlyFilter>();
+    })
     // Enums go over the wire as camelCase names ("draft", "approved") rather than numbers.
     .AddJsonOptions(options =>
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)))
@@ -81,9 +113,30 @@ builder.Services
     });
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    // Operation ids are "<Controller>_<Action>" without the "Async" suffix (Products_GetAll, Sales_Create, ...).
+    // The controller prefix keeps them unique, since many controllers share action names like GetAll and Create.
+    options.CustomOperationIds(api =>
+        api.ActionDescriptor is ControllerActionDescriptor action
+            ? $"{action.ControllerName}_{TrimAsyncSuffix(action.ActionName)}"
+            : null);
+
+    // api/company is a legacy alias of api/companies kept for existing clients; documenting both
+    // would emit every company operation twice with the same operation id.
+    options.DocInclusionPredicate((_, api) =>
+        api.RelativePath is not { } path
+        || !(path.Equals("api/company", StringComparison.OrdinalIgnoreCase)
+             || path.StartsWith("api/company/", StringComparison.OrdinalIgnoreCase)));
+});
 
 var app = builder.Build();
+
+// The seeder below queries Users, so the schema must match the model first (Development applies pending migrations).
+await app.Services.MigrateDatabaseAsync(applyPending: app.Environment.IsDevelopment());
+
+// Creates the platform administrator from the "SuperAdmin" section (if configured) before serving requests.
+await app.Services.SeedSuperAdminAsync();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -95,11 +148,19 @@ if (app.Environment.IsDevelopment())
 // Before HTTPS redirection and auth, so preflight (OPTIONS) requests are answered rather than redirected or rejected.
 app.UseCors(FrontendCorsPolicy);
 
-app.UseHttpsRedirection();
+// In Development the frontend calls the plain-HTTP endpoint; a 307 to HTTPS would turn every cross-origin call into a redirect.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<NexusERP.Api.Hubs.SupportChatHub>(NexusERP.Api.Hubs.SupportChatHub.Path);
 
 app.Run();
+
+static string TrimAsyncSuffix(string name) =>
+    name.EndsWith("Async", StringComparison.Ordinal) ? name[..^"Async".Length] : name;

@@ -3,7 +3,9 @@ using NexusERP.Application.Common;
 
 namespace NexusERP.Api.Controllers;
 
+// [controller] goes through KebabCaseParameterTransformer: CashRegistersController -> api/cash-registers.
 [ApiController]
+[Route("api/[controller]")]
 public abstract class ApiControllerBase : ControllerBase
 {
     /// <summary>Id of the authenticated user (the JWT "sub" claim). Only valid on [Authorize] actions.</summary>

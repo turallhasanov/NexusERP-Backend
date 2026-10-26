@@ -11,8 +11,12 @@ public class Expense
     public DateTime ExpenseDate { get; set; }
     public string? Note { get; set; }
 
+    /// <summary>Store the expense belongs to (rent, utilities…), for store profit; null for company-wide expenses.</summary>
+    public string? StoreId { get; set; }
+
     public ExpenseCategory? ExpenseCategory { get; set; }
     public CashRegister? CashRegister { get; set; }
+    public Store? Store { get; set; }
 
     /// <summary>The cash register transaction this expense created (the FK is on the transaction).</summary>
     public Transaction? Transaction { get; set; }

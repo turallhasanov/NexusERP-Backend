@@ -24,5 +24,12 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .HasForeignKey(u => u.CompanyId)
             .IsRequired(false)
             .OnDelete(DeleteBehavior.SetNull);
+
+        // A role still given to someone cannot be deleted.
+        builder.HasOne<CustomRole>()
+            .WithMany()
+            .HasForeignKey(u => u.CustomRoleId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

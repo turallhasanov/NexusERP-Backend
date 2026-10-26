@@ -24,7 +24,10 @@ public static class DependencyInjection
             .Bind(configuration.GetSection(JwtSettings.SectionName))
             .Validate(s => Encoding.UTF8.GetByteCount(s.Secret) >= 32, "JwtSettings:Secret must be at least 32 bytes.")
             .Validate(s => s.ExpiryMinutes > 0, "JwtSettings:ExpiryMinutes must be positive.")
+            .Validate(s => s.ImpersonationExpiryMinutes > 0, "JwtSettings:ImpersonationExpiryMinutes must be positive.")
             .ValidateOnStart();
+
+        services.AddOptions<SuperAdminSettings>().Bind(configuration.GetSection(SuperAdminSettings.SectionName));
 
         services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
         services.AddSingleton<IPasswordHasher, PasswordHasher>();
