@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using NexusERP.Application.Audit;
 using NexusERP.Application.Common;
 using NexusERP.Application.Common.Interfaces;
 using NexusERP.Domain.Entities;
@@ -6,7 +7,7 @@ using NexusERP.Domain.Enums;
 
 namespace NexusERP.Application.Warehouses;
 
-public class WarehouseService(IApplicationDbContext db) : IWarehouseService
+public class WarehouseService(IApplicationDbContext db, IAuditLogger audit) : IWarehouseService
 {
     private const string CodePrefix = "DPO";
 
@@ -110,6 +111,9 @@ public class WarehouseService(IApplicationDbContext db) : IWarehouseService
             code => warehouse.Code = code,
             cancellationToken);
 
+        await audit.LogAsync(companyId, AuditModule.Inventory, AuditAction.Create,
+            $"'{warehouse.Code} · {warehouse.Name}' anbarı yaradıldı", cancellationToken);
+
         // A new warehouse holds no stock yet.
         return WarehouseResponseDto.From(new WarehouseDto(
             warehouse.Id, warehouse.Code, warehouse.Name, warehouse.Address, warehouse.ResponsiblePerson,
@@ -131,6 +135,9 @@ public class WarehouseService(IApplicationDbContext db) : IWarehouseService
 
         fields.ApplyTo(warehouse);
         await db.SaveChangesAsync(cancellationToken);
+
+        await audit.LogAsync(companyId, AuditModule.Inventory, AuditAction.Update,
+            $"'{warehouse.Code} · {warehouse.Name}' anbarının məlumatları yeniləndi", cancellationToken);
 
         var dto = await FindDtoAsync(companyId, id, cancellationToken);
         return WarehouseResponseDto.From(dto!);
@@ -174,6 +181,9 @@ public class WarehouseService(IApplicationDbContext db) : IWarehouseService
             db.Warehouses.Remove(warehouse);
 
         await db.SaveChangesAsync(cancellationToken);
+
+        await audit.LogAsync(companyId, AuditModule.Inventory, AuditAction.Delete,
+            $"'{warehouse.Code} · {warehouse.Name}' anbarı silindi", cancellationToken);
 
         return new SuccessResponse();
     }

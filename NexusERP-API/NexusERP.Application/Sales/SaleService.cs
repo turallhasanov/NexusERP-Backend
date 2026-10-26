@@ -1,5 +1,6 @@
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
+using NexusERP.Application.Audit;
 using NexusERP.Application.CashRegisters;
 using NexusERP.Application.Common;
 using NexusERP.Application.Common.Interfaces;
@@ -9,7 +10,7 @@ using NexusERP.Domain.Enums;
 
 namespace NexusERP.Application.Sales;
 
-public class SaleService(IApplicationDbContext db, IStockWriter stockWriter) : ISaleService
+public class SaleService(IApplicationDbContext db, IStockWriter stockWriter, IAuditLogger audit) : ISaleService
 {
     private const string NumberPrefix = "STŞ";
 
@@ -81,6 +82,9 @@ public class SaleService(IApplicationDbContext db, IStockWriter stockWriter) : I
 
         await AddWithNumberAsync(companyId, sale, cancellationToken);
 
+        await audit.LogAsync(companyId, AuditModule.Retail, AuditAction.Create,
+            $"'{sale.DocumentNumber}' satış qaiməsi yaradıldı ({sale.TotalAmount:0.00} ₼)", cancellationToken);
+
         return SaleResponseDto.From((await FindAsync(companyId, sale.Id, cancellationToken))!);
     }
 
@@ -122,7 +126,11 @@ public class SaleService(IApplicationDbContext db, IStockWriter stockWriter) : I
 
         await transaction.CommitAsync(cancellationToken);
 
-        return SaleResponseDto.From((await FindAsync(companyId, id, cancellationToken))!);
+        var approvedSale = (await FindAsync(companyId, id, cancellationToken))!;
+        await audit.LogAsync(companyId, AuditModule.Retail, AuditAction.Update,
+            $"'{approvedSale.DocumentNumber}' satış qaiməsi təsdiqləndi ({approvedSale.TotalAmount:0.00} ₼)", cancellationToken);
+
+        return SaleResponseDto.From(approvedSale);
     }
 
     public async Task<Result<SaleResponseDto>> PosCheckoutAsync(string companyId, CreateSaleRequestDto request, CancellationToken cancellationToken)
@@ -186,6 +194,9 @@ public class SaleService(IApplicationDbContext db, IStockWriter stockWriter) : I
         }
 
         await transaction.CommitAsync(cancellationToken);
+
+        await audit.LogAsync(companyId, AuditModule.Retail, AuditAction.Create,
+            $"'{sale.DocumentNumber}' POS satışı edildi ({sale.TotalAmount:0.00} ₼)", cancellationToken);
 
         return SaleResponseDto.From((await FindAsync(companyId, sale.Id, cancellationToken))!);
     }
@@ -254,6 +265,10 @@ public class SaleService(IApplicationDbContext db, IStockWriter stockWriter) : I
 
             throw;
         }
+
+        await audit.LogAsync(companyId, AuditModule.Retail, AuditAction.Create,
+            $"Khazar online sifarişi {externalOrderNumber} '{sale.DocumentNumber}' satış qaiməsi kimi qəbul edildi ({sale.TotalAmount:0.00} ₼)",
+            cancellationToken);
 
         return SaleResponseDto.From((await FindAsync(companyId, sale.Id, cancellationToken))!);
     }

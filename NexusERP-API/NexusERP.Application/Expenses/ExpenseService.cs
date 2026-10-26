@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using NexusERP.Application.Audit;
 using NexusERP.Application.CashRegisters;
 using NexusERP.Application.Common;
 using NexusERP.Application.Common.Interfaces;
@@ -7,7 +8,7 @@ using NexusERP.Domain.Enums;
 
 namespace NexusERP.Application.Expenses;
 
-public class ExpenseService(IApplicationDbContext db) : IExpenseService
+public class ExpenseService(IApplicationDbContext db, IAuditLogger audit) : IExpenseService
 {
     // Must match the column lengths in ExpenseConfiguration.
     private const int NoteMaxLength = 500;
@@ -120,6 +121,9 @@ public class ExpenseService(IApplicationDbContext db) : IExpenseService
             .Select(ExpenseDto.Projection)
             .SingleAsync(cancellationToken);
 
+        await audit.LogAsync(companyId, AuditModule.Finance, AuditAction.Create,
+            $"{created.Amount:0.00} ₼ məxaric yazıldı ({created.ExpenseCategory.Name}, {created.CashRegister.Name})", cancellationToken);
+
         return ExpenseResponseDto.From(created);
     }
 
@@ -149,6 +153,10 @@ public class ExpenseService(IApplicationDbContext db) : IExpenseService
             .Where(e => e.Id == id)
             .Select(ExpenseDto.Projection)
             .SingleAsync(cancellationToken);
+
+        await audit.LogAsync(companyId, AuditModule.Finance, AuditAction.Update,
+            $"{updated.Amount:0.00} ₼ məxaricin ({updated.ExpenseCategory.Name}) mağazası dəyişdirildi: {updated.Store?.Name ?? "ümumi"}",
+            cancellationToken);
 
         return ExpenseResponseDto.From(updated);
     }

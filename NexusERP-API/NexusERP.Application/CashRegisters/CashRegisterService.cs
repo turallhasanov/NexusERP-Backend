@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using NexusERP.Application.Audit;
 using NexusERP.Application.Common;
 using NexusERP.Application.Common.Interfaces;
 using NexusERP.Domain.Entities;
@@ -6,7 +7,7 @@ using NexusERP.Domain.Enums;
 
 namespace NexusERP.Application.CashRegisters;
 
-public class CashRegisterService(IApplicationDbContext db) : ICashRegisterService
+public class CashRegisterService(IApplicationDbContext db, IAuditLogger audit) : ICashRegisterService
 {
     private const string CodePrefix = "KSA";
 
@@ -81,6 +82,12 @@ public class CashRegisterService(IApplicationDbContext db) : ICashRegisterServic
             db.CashRegisters.Where(c => c.CompanyId == companyId).Select(c => c.Code),
             CodePrefix,
             code => cashRegister.Code = code,
+            cancellationToken);
+
+        await audit.LogAsync(companyId, AuditModule.Finance, AuditAction.Create,
+            openingBalance > 0
+                ? $"'{cashRegister.Code} · {cashRegister.Name}' kassası yaradıldı (başlanğıc qalıq {openingBalance:0.00} ₼)"
+                : $"'{cashRegister.Code} · {cashRegister.Name}' kassası yaradıldı",
             cancellationToken);
 
         return CashRegisterResponseDto.From(cashRegister);
@@ -247,6 +254,16 @@ public class CashRegisterService(IApplicationDbContext db) : ICashRegisterServic
             .Where(t => t.Id == transaction.Id)
             .Select(TransactionDto.Projection)
             .SingleAsync(cancellationToken);
+
+        var kind = type switch
+        {
+            TransactionType.Income => "mədaxil",
+            TransactionType.Expense => "məxaric",
+            _ => "köçürmə"
+        };
+        await audit.LogAsync(companyId, AuditModule.Finance, AuditAction.Create,
+            $"'{created.CashRegister.Name}' kassasında {amount:0.00} ₼ {kind} əməliyyatı qeyd edildi{(description is null ? "" : $" ({description})")}",
+            cancellationToken);
 
         return TransactionResponseDto.From(created);
     }

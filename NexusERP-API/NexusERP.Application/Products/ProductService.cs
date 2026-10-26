@@ -1,11 +1,13 @@
 using Microsoft.EntityFrameworkCore;
+using NexusERP.Application.Audit;
 using NexusERP.Application.Common;
 using NexusERP.Application.Common.Interfaces;
 using NexusERP.Domain.Entities;
+using NexusERP.Domain.Enums;
 
 namespace NexusERP.Application.Products;
 
-public class ProductService(IApplicationDbContext db) : IProductService
+public class ProductService(IApplicationDbContext db, IAuditLogger audit) : IProductService
 {
     private const string CodePrefix = "MHS";
 
@@ -140,6 +142,9 @@ public class ProductService(IApplicationDbContext db) : IProductService
             code => product.Code = code,
             cancellationToken);
 
+        await audit.LogAsync(companyId, AuditModule.Inventory, AuditAction.Create,
+            $"'{product.Code} · {product.Name}' məhsulu əlavə edildi", cancellationToken);
+
         return ProductResponseDto.From(product, category, unit);
     }
 
@@ -170,6 +175,12 @@ public class ProductService(IApplicationDbContext db) : IProductService
             db.Products.Remove(product);
 
         await db.SaveChangesAsync(cancellationToken);
+
+        await audit.LogAsync(companyId, AuditModule.Inventory, AuditAction.Delete,
+            isReferenced
+                ? $"'{product.Code} · {product.Name}' məhsulu silindi (sənədlərdə istifadə olunduğu üçün deaktiv edildi)"
+                : $"'{product.Code} · {product.Name}' məhsulu silindi",
+            cancellationToken);
 
         return isReferenced
             ? new ProductDeleteResponseDto(true, "Bu məhsula bağlı əməliyyatlar (alış/satış) olduğu üçün silinə bilməz, deaktiv edildi.")

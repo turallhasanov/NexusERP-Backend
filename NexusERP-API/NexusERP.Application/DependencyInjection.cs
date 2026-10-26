@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using NexusERP.Application.Admin;
+using NexusERP.Application.Audit;
 using NexusERP.Application.Auth;
 using NexusERP.Application.CashRegisters;
 using NexusERP.Application.Categories;
@@ -34,6 +35,8 @@ public static class DependencyInjection
         services.AddScoped<IEmployeeService, EmployeeService>();
         services.AddScoped<IFinanceService, FinanceService>();
         services.AddScoped<ISupportService, SupportService>();
+        services.AddScoped<IAuditLogger, AuditLogger>();
+        services.AddScoped<IAuditLogService, AuditLogService>();
         services.AddScoped<IStoreService, StoreService>();
         services.AddScoped<ICustomerService, CustomerService>();
         services.AddScoped<ICategoryService, CategoryService>();

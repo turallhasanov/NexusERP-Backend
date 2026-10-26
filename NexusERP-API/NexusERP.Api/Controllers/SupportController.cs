@@ -33,6 +33,25 @@ public class SupportController(ISupportService supportService) : ApiControllerBa
     public async Task<IActionResult> AddMessage(string id, [FromBody] SupportMessageRequestDto request, CancellationToken cancellationToken) =>
         ToActionResult(await supportService.AddUserMessageAsync(CurrentCompanyId, CurrentUserId, id, request, cancellationToken));
 
+    /// <summary>The caller has seen the team's (and the bot's) messages in their ticket: they show ✓✓ to the team.</summary>
+    [HttpPost("tickets/{id}/read")]
+    [RequireCompany]
+    [ProducesResponseType<SupportTicketResponseDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> MarkRead(string id, CancellationToken cancellationToken) =>
+        ToActionResult(await supportService.MarkReadByUserAsync(CurrentCompanyId, CurrentUserId, id, cancellationToken));
+
+    /// <summary>
+    /// "Söhbəti təmizlə": hides the conversation so far from the caller's own widget. Nothing is deleted; the team and the
+    /// audit trail keep the full history, and new messages still appear.
+    /// </summary>
+    [HttpPost("tickets/{id}/clear")]
+    [RequireCompany]
+    [ProducesResponseType<SupportTicketResponseDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Clear(string id, CancellationToken cancellationToken) =>
+        ToActionResult(await supportService.ClearForUserAsync(CurrentCompanyId, CurrentUserId, id, cancellationToken));
+
     /// <summary>The caller's newest tickets (up to 20) with their messages.</summary>
     [HttpGet("my-tickets")]
     [RequireCompany]
@@ -53,7 +72,23 @@ public class SupportController(ISupportService supportService) : ApiControllerBa
     [ProducesResponseType<SupportTicketResponseDto>(StatusCodes.Status200OK)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetAdminTicket(string id, CancellationToken cancellationToken) =>
-        ToActionResult(await supportService.GetAdminTicketAsync(id, cancellationToken));
+        ToActionResult(await supportService.GetAdminTicketAsync(CurrentUserId, id, cancellationToken));
+
+    /// <summary>The team has seen the user's messages: they show ✓✓ in the user's widget.</summary>
+    [HttpPost("admin/tickets/{id}/read")]
+    [Authorize(Roles = AppRoles.SuperAdmin)]
+    [ProducesResponseType<SupportTicketResponseDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> MarkReadByTeam(string id, CancellationToken cancellationToken) =>
+        ToActionResult(await supportService.MarkReadByTeamAsync(CurrentUserId, id, cancellationToken));
+
+    /// <summary>"Söhbəti təmizlə" on the desk: hides the conversation so far for the calling admin only.</summary>
+    [HttpPost("admin/tickets/{id}/clear")]
+    [Authorize(Roles = AppRoles.SuperAdmin)]
+    [ProducesResponseType<SupportTicketResponseDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ClearForTeam(string id, CancellationToken cancellationToken) =>
+        ToActionResult(await supportService.ClearForTeamAsync(CurrentUserId, id, cancellationToken));
 
     /// <summary>The support team's answer; the ticket then waits for the user.</summary>
     [HttpPost("tickets/{id}/reply")]
@@ -70,5 +105,5 @@ public class SupportController(ISupportService supportService) : ApiControllerBa
     [ProducesResponseType<SupportTicketResponseDto>(StatusCodes.Status200OK)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Resolve(string id, CancellationToken cancellationToken) =>
-        ToActionResult(await supportService.ResolveAsync(id, cancellationToken));
+        ToActionResult(await supportService.ResolveAsync(CurrentUserId, id, cancellationToken));
 }

@@ -28,6 +28,8 @@ public interface IApplicationDbContext
     DbSet<Employee> Employees { get; }
     DbSet<SupportTicket> SupportTickets { get; }
     DbSet<SupportMessage> SupportMessages { get; }
+    DbSet<SupportTicketView> SupportTicketViews { get; }
+    DbSet<AuditLog> AuditLogs { get; }
 
     /// <summary>Used for explicit transactions; implemented by <c>DbContext.Database</c>.</summary>
     DatabaseFacade Database { get; }

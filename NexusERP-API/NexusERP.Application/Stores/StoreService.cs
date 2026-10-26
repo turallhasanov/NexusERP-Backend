@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using NexusERP.Application.Audit;
 using NexusERP.Application.Common;
 using NexusERP.Application.Common.Interfaces;
 using NexusERP.Domain.Entities;
@@ -6,7 +7,7 @@ using NexusERP.Domain.Enums;
 
 namespace NexusERP.Application.Stores;
 
-public class StoreService(IApplicationDbContext db) : IStoreService
+public class StoreService(IApplicationDbContext db, IAuditLogger audit) : IStoreService
 {
     private const string CodePrefix = "MGZ";
 
@@ -53,6 +54,9 @@ public class StoreService(IApplicationDbContext db) : IStoreService
             code => store.Code = code,
             cancellationToken);
 
+        await audit.LogAsync(companyId, AuditModule.Retail, AuditAction.Create,
+            $"'{store.Code} · {store.Name}' mağazası yaradıldı", cancellationToken);
+
         return StoreResponseDto.From(store, warehouse);
     }
 
@@ -74,6 +78,9 @@ public class StoreService(IApplicationDbContext db) : IStoreService
         store.Address = address;
         store.WarehouseId = warehouse.Id;
         await db.SaveChangesAsync(cancellationToken);
+
+        await audit.LogAsync(companyId, AuditModule.Retail, AuditAction.Update,
+            $"'{store.Code} · {store.Name}' mağazasının məlumatları yeniləndi", cancellationToken);
 
         return StoreResponseDto.From(store, warehouse);
     }
@@ -114,6 +121,9 @@ public class StoreService(IApplicationDbContext db) : IStoreService
         db.Stores.Remove(store);
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+
+        await audit.LogAsync(companyId, AuditModule.Retail, AuditAction.Delete,
+            $"'{store.Code} · {store.Name}' mağazası silindi", cancellationToken);
 
         return new SuccessResponse();
     }

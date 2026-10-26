@@ -14,5 +14,10 @@ public class SupportMessage
     public string MessageText { get; set; } = string.Empty;
     public DateTime SentAt { get; set; } = DateTime.UtcNow;
 
+    /// <summary>Seen by the other side: the team for a user's message, the user for the team's and the bot's.</summary>
+    public bool IsRead { get; set; }
+
+    public DateTime? ReadAt { get; set; }
+
     public User? SenderUser { get; set; }
 }

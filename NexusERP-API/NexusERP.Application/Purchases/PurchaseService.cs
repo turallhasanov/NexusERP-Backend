@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using NexusERP.Application.Audit;
 using NexusERP.Application.Common;
 using NexusERP.Application.Common.Interfaces;
 using NexusERP.Domain.Entities;
@@ -6,7 +7,7 @@ using NexusERP.Domain.Enums;
 
 namespace NexusERP.Application.Purchases;
 
-public class PurchaseService(IApplicationDbContext db, IStockWriter stockWriter) : IPurchaseService
+public class PurchaseService(IApplicationDbContext db, IStockWriter stockWriter, IAuditLogger audit) : IPurchaseService
 {
     private const string NumberPrefix = "ALS";
 
@@ -173,6 +174,9 @@ public class PurchaseService(IApplicationDbContext db, IStockWriter stockWriter)
             number => purchase.DocumentNumber = number,
             cancellationToken);
 
+        await audit.LogAsync(companyId, AuditModule.Finance, AuditAction.Create,
+            $"'{purchase.DocumentNumber}' alış qaiməsi yaradıldı ({purchase.TotalAmount:0.00} ₼)", cancellationToken);
+
         return PurchaseResponseDto.From((await FindAsync(companyId, purchase.Id, cancellationToken))!);
     }
 
@@ -234,7 +238,11 @@ public class PurchaseService(IApplicationDbContext db, IStockWriter stockWriter)
 
         await transaction.CommitAsync(cancellationToken);
 
-        return PurchaseResponseDto.From((await FindAsync(companyId, id, cancellationToken))!);
+        var approvedPurchase = (await FindAsync(companyId, id, cancellationToken))!;
+        await audit.LogAsync(companyId, AuditModule.Finance, AuditAction.Update,
+            $"'{approvedPurchase.DocumentNumber}' alış qaiməsi təsdiqləndi ({approvedPurchase.TotalAmount:0.00} ₼)", cancellationToken);
+
+        return PurchaseResponseDto.From(approvedPurchase);
     }
 
     private Task<PurchaseDto?> FindAsync(string companyId, string id, CancellationToken cancellationToken) =>

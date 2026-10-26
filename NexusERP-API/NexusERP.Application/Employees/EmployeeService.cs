@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using NexusERP.Application.Audit;
 using NexusERP.Application.Common;
 using NexusERP.Application.Common.Interfaces;
 using NexusERP.Domain.Entities;
@@ -6,7 +7,7 @@ using NexusERP.Domain.Enums;
 
 namespace NexusERP.Application.Employees;
 
-public class EmployeeService(IApplicationDbContext db) : IEmployeeService
+public class EmployeeService(IApplicationDbContext db, IAuditLogger audit) : IEmployeeService
 {
     private const string OrderNumberPrefix = "ƏMR";
 
@@ -58,6 +59,9 @@ public class EmployeeService(IApplicationDbContext db) : IEmployeeService
         db.Employees.Add(employee);
         await db.SaveChangesAsync(cancellationToken);
 
+        await audit.LogAsync(companyId, AuditModule.HR, AuditAction.Create,
+            $"'{employee.FullName}' işçisi işə qəbul edildi ({employee.Title}, {employee.Department})", cancellationToken);
+
         return new EmployeeResponseDto(EmployeeDto.From(employee));
     }
 
@@ -89,6 +93,9 @@ public class EmployeeService(IApplicationDbContext db) : IEmployeeService
 
         profile.ApplyTo(employee);
         await db.SaveChangesAsync(cancellationToken);
+
+        await audit.LogAsync(companyId, AuditModule.HR, AuditAction.Update,
+            $"'{employee.FullName}' işçisinin məlumatları yeniləndi", cancellationToken);
 
         return new EmployeeResponseDto(EmployeeDto.From(employee));
     }
@@ -185,6 +192,9 @@ public class EmployeeService(IApplicationDbContext db) : IEmployeeService
             number => employee.TerminationOrderNumber = number,
             cancellationToken);
 
+        await audit.LogAsync(companyId, AuditModule.HR, AuditAction.Update,
+            $"'{employee.FullName}' işçisi işdən çıxarıldı (əmr {employee.TerminationOrderNumber}, səbəb: {reason})", cancellationToken);
+
         return new EmployeeResponseDto(EmployeeDto.From(employee));
     }
 
@@ -224,13 +234,23 @@ public class EmployeeService(IApplicationDbContext db) : IEmployeeService
     /// </summary>
     public async Task<Result<SuccessResponse>> DeleteAsync(string companyId, string id, CancellationToken cancellationToken)
     {
-        var deleted = await db.Employees
+        var name = await db.Employees
             .Where(e => e.Id == id && e.CompanyId == companyId)
-            .ExecuteDeleteAsync(cancellationToken);
+            .Select(e => e.FullName)
+            .FirstOrDefaultAsync(cancellationToken);
 
-        return deleted == 0
-            ? Result<SuccessResponse>.Failure(ErrorType.NotFound, EmployeeNotFound)
-            : new SuccessResponse();
+        var deleted = name is null
+            ? 0
+            : await db.Employees
+                .Where(e => e.Id == id && e.CompanyId == companyId)
+                .ExecuteDeleteAsync(cancellationToken);
+
+        if (deleted == 0)
+            return Result<SuccessResponse>.Failure(ErrorType.NotFound, EmployeeNotFound);
+
+        await audit.LogAsync(companyId, AuditModule.HR, AuditAction.Delete, $"'{name}' işçisi sistemdən silindi", cancellationToken);
+
+        return new SuccessResponse();
     }
 
     private Task<Employee?> FindAsync(string companyId, string id, CancellationToken cancellationToken) =>

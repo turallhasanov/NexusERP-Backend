@@ -6,7 +6,7 @@ using NexusERP.Domain.Enums;
 
 namespace NexusERP.Application.Support;
 
-public class SupportService(IApplicationDbContext db) : ISupportService
+public class SupportService(IApplicationDbContext db, ISupportNotifier notifier) : ISupportService
 {
     // Must match SupportMessageConfiguration.
     private const int MessageMaxLength = 2000;
@@ -17,8 +17,11 @@ public class SupportService(IApplicationDbContext db) : ISupportService
     private const string BotName = "NexusERP Bot";
     private const string SupportTeamName = "Dəstək komandası";
 
-    private const string GreetingText = "Salam! Sorğunuz qəbul olundu. Komandamız ən qısa zamanda sualınızı cavablandıracaq.";
-    private const string ResolvedText = "Sorğunuz həll olunmuş kimi qeyd edildi. Yeni sualınız olarsa, buraya yazın — yeni müraciət açılacaq.";
+    private const string GreetingText =
+        "Salam! 👋 NexusERP Dəstək Xidmətinə xoş gəlmisiniz. Sorğunuz qeydə alındı! 🚀 Mütəxəssislərimiz ən qısa zamanda sizə buradan cavab verəcəkdir.";
+
+    private const string ResolvedText =
+        "Bu dəstək sorğusu uğurla həll olundu kimi işarələndi. ✅ Başqa bir sualınız olarsa, istənilən vaxt yeni çat başlada bilərsiniz. Uğurlar!";
 
     private const string TicketNotFound = "Müraciət tapılmadı.";
 
@@ -43,13 +46,14 @@ public class SupportService(IApplicationDbContext db) : ISupportService
             SentAt = now
         });
 
-        // A moment after the user's message, so it sorts after it.
-        ticket.Messages.Add(BotMessage(ticket.Id, GreetingText, now.AddMilliseconds(500)));
+        // Just after the user's message, so it sorts after it. Not later: a reply or "Söhbəti təmizlə" right away must
+        // still come after the greeting.
+        ticket.Messages.Add(BotMessage(ticket.Id, GreetingText, now.AddMilliseconds(1)));
 
         db.SupportTickets.Add(ticket);
         await db.SaveChangesAsync(cancellationToken);
 
-        return await LoadAsync(ticket.Id, cancellationToken);
+        return await LoadAndPushAsync(ticket.Id, userId, cancellationToken);
     }
 
     /// <summary>A follow-up from the ticket's owner; the ticket goes back to the team (Open).</summary>
@@ -83,7 +87,7 @@ public class SupportService(IApplicationDbContext db) : ISupportService
         ticket.LastMessageAt = now;
         await db.SaveChangesAsync(cancellationToken);
 
-        return await LoadAsync(ticket.Id, cancellationToken);
+        return await LoadAndPushAsync(ticket.Id, userId, cancellationToken);
     }
 
     public async Task<Result<ItemsResponseDto<SupportTicketDto>>> GetMyTicketsAsync(string companyId, string userId, CancellationToken cancellationToken)
@@ -96,7 +100,7 @@ public class SupportService(IApplicationDbContext db) : ISupportService
             .Select(t => t.Id)
             .ToListAsync(cancellationToken);
 
-        var tickets = await LoadManyAsync(ids, cancellationToken);
+        var tickets = await LoadManyAsync(ids, userId, cancellationToken);
         return new ItemsResponseDto<SupportTicketDto>(tickets);
     }
 
@@ -138,14 +142,15 @@ public class SupportService(IApplicationDbContext db) : ISupportService
                 t.ResolvedAt,
                 t.Messages.OrderByDescending(m => m.SentAt).Select(m => m.MessageText).First(),
                 t.Messages.OrderByDescending(m => m.SentAt).Select(m => m.SenderType).First(),
-                t.Messages.Count))
+                t.Messages.Count,
+                t.Messages.Count(m => m.SenderType == SupportSenderType.User && !m.IsRead)))
             .ToListAsync(cancellationToken);
 
         return new ItemsResponseDto<SupportTicketSummaryDto>(items);
     }
 
-    public Task<Result<SupportTicketResponseDto>> GetAdminTicketAsync(string ticketId, CancellationToken cancellationToken) =>
-        LoadAsync(ticketId, cancellationToken);
+    public Task<Result<SupportTicketResponseDto>> GetAdminTicketAsync(string adminUserId, string ticketId, CancellationToken cancellationToken) =>
+        LoadAsync(ticketId, adminUserId, cancellationToken);
 
     /// <summary>A platform admin's answer; the ticket waits for the user (Pending). A resolved ticket is reopened.</summary>
     public async Task<Result<SupportTicketResponseDto>> ReplyAsync(string adminUserId, string ticketId, SupportMessageRequestDto request, CancellationToken cancellationToken)
@@ -173,11 +178,11 @@ public class SupportService(IApplicationDbContext db) : ISupportService
         ticket.ResolvedAt = null;
         await db.SaveChangesAsync(cancellationToken);
 
-        return await LoadAsync(ticket.Id, cancellationToken);
+        return await LoadAndPushAsync(ticket.Id, adminUserId, cancellationToken);
     }
 
     /// <summary>Marks the ticket resolved and leaves a bot note in the conversation. Resolving twice changes nothing.</summary>
-    public async Task<Result<SupportTicketResponseDto>> ResolveAsync(string ticketId, CancellationToken cancellationToken)
+    public async Task<Result<SupportTicketResponseDto>> ResolveAsync(string adminUserId, string ticketId, CancellationToken cancellationToken)
     {
         var ticket = await db.SupportTickets.FirstOrDefaultAsync(t => t.Id == ticketId, cancellationToken);
 
@@ -193,9 +198,76 @@ public class SupportService(IApplicationDbContext db) : ISupportService
             ticket.ResolvedAt = now;
             ticket.LastMessageAt = now;
             await db.SaveChangesAsync(cancellationToken);
+
+            return await LoadAndPushAsync(ticket.Id, adminUserId, cancellationToken);
         }
 
-        return await LoadAsync(ticket.Id, cancellationToken);
+        return await LoadAsync(ticket.Id, adminUserId, cancellationToken);
+    }
+
+    /// <summary>The ticket's owner has seen the team's and the bot's messages.</summary>
+    public async Task<Result<SupportTicketResponseDto>> MarkReadByUserAsync(string companyId, string userId, string ticketId, CancellationToken cancellationToken)
+    {
+        if (!await db.SupportTickets.AnyAsync(t => t.Id == ticketId && t.CompanyId == companyId && t.UserId == userId, cancellationToken))
+            return Result<SupportTicketResponseDto>.Failure(ErrorType.NotFound, TicketNotFound);
+
+        return await MarkReadAsync(ticketId, userId, m => m.SenderType != SupportSenderType.User, cancellationToken);
+    }
+
+    /// <summary>The platform team has seen the user's messages.</summary>
+    public async Task<Result<SupportTicketResponseDto>> MarkReadByTeamAsync(string adminUserId, string ticketId, CancellationToken cancellationToken)
+    {
+        if (!await db.SupportTickets.AnyAsync(t => t.Id == ticketId, cancellationToken))
+            return Result<SupportTicketResponseDto>.Failure(ErrorType.NotFound, TicketNotFound);
+
+        return await MarkReadAsync(ticketId, adminUserId, m => m.SenderType == SupportSenderType.User, cancellationToken);
+    }
+
+    public async Task<Result<SupportTicketResponseDto>> ClearForUserAsync(string companyId, string userId, string ticketId, CancellationToken cancellationToken)
+    {
+        if (!await db.SupportTickets.AnyAsync(t => t.Id == ticketId && t.CompanyId == companyId && t.UserId == userId, cancellationToken))
+            return Result<SupportTicketResponseDto>.Failure(ErrorType.NotFound, TicketNotFound);
+
+        return await ClearViewAsync(ticketId, userId, cancellationToken);
+    }
+
+    public async Task<Result<SupportTicketResponseDto>> ClearForTeamAsync(string adminUserId, string ticketId, CancellationToken cancellationToken)
+    {
+        if (!await db.SupportTickets.AnyAsync(t => t.Id == ticketId, cancellationToken))
+            return Result<SupportTicketResponseDto>.Failure(ErrorType.NotFound, TicketNotFound);
+
+        return await ClearViewAsync(ticketId, adminUserId, cancellationToken);
+    }
+
+    // Hides everything sent so far for this viewer. No push: nobody else's view changes.
+    private async Task<Result<SupportTicketResponseDto>> ClearViewAsync(string ticketId, string viewerId, CancellationToken cancellationToken)
+    {
+        var now = DateTime.UtcNow;
+        var view = await db.SupportTicketViews.FirstOrDefaultAsync(v => v.TicketId == ticketId && v.UserId == viewerId, cancellationToken);
+
+        if (view is null)
+            db.SupportTicketViews.Add(new SupportTicketView { TicketId = ticketId, UserId = viewerId, ClearedAt = now });
+        else
+            view.ClearedAt = now;
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        return await LoadAsync(ticketId, viewerId, cancellationToken);
+    }
+
+    // Marks the unread messages of one side; the other side is told only when something changed.
+    private async Task<Result<SupportTicketResponseDto>> MarkReadAsync(
+        string ticketId, string viewerId, System.Linq.Expressions.Expression<Func<SupportMessage, bool>> fromOtherSide, CancellationToken cancellationToken)
+    {
+        var now = DateTime.UtcNow;
+        var marked = await db.SupportMessages
+            .Where(m => m.TicketId == ticketId && !m.IsRead)
+            .Where(fromOtherSide)
+            .ExecuteUpdateAsync(s => s.SetProperty(m => m.IsRead, true).SetProperty(m => m.ReadAt, now), cancellationToken);
+
+        return marked > 0
+            ? await LoadAndPushAsync(ticketId, viewerId, cancellationToken)
+            : await LoadAsync(ticketId, viewerId, cancellationToken);
     }
 
     private static SupportMessage BotMessage(string ticketId, string text, DateTime sentAt) => new()
@@ -217,17 +289,29 @@ public class SupportService(IApplicationDbContext db) : ISupportService
         return text.Length > MessageMaxLength ? $"Mesaj {MessageMaxLength} simvoldan uzun ola bilməz." : null;
     }
 
-    private async Task<Result<SupportTicketResponseDto>> LoadAsync(string ticketId, CancellationToken cancellationToken)
+    // After a change: the ticket for the caller, pushed to its owner and the team as well. The push leaves out the
+    // caller's own clearedAt, which means nothing to the other recipients.
+    private async Task<Result<SupportTicketResponseDto>> LoadAndPushAsync(string ticketId, string viewerId, CancellationToken cancellationToken)
     {
-        var tickets = await LoadManyAsync([ticketId], cancellationToken);
+        var result = await LoadAsync(ticketId, viewerId, cancellationToken);
+
+        if (result.IsSuccess)
+            await notifier.TicketChangedAsync(result.Value!.Ticket with { ClearedAt = null }, cancellationToken);
+
+        return result;
+    }
+
+    private async Task<Result<SupportTicketResponseDto>> LoadAsync(string ticketId, string viewerId, CancellationToken cancellationToken)
+    {
+        var tickets = await LoadManyAsync([ticketId], viewerId, cancellationToken);
 
         return tickets.Count == 0
             ? Result<SupportTicketResponseDto>.Failure(ErrorType.NotFound, TicketNotFound)
             : new SupportTicketResponseDto(tickets[0]);
     }
 
-    /// <summary>Tickets with their messages, in the order of <paramref name="ids"/>.</summary>
-    private async Task<List<SupportTicketDto>> LoadManyAsync(IReadOnlyCollection<string> ids, CancellationToken cancellationToken)
+    /// <summary>Tickets with their messages, in the order of <paramref name="ids"/>, with <paramref name="viewerId"/>'s clearedAt.</summary>
+    private async Task<List<SupportTicketDto>> LoadManyAsync(IReadOnlyCollection<string> ids, string viewerId, CancellationToken cancellationToken)
     {
         if (ids.Count == 0)
             return [];
@@ -238,6 +322,7 @@ public class SupportService(IApplicationDbContext db) : ISupportService
             .Select(t => new SupportTicketDto(
                 t.Id,
                 t.Status,
+                t.UserId,
                 t.CompanyId,
                 db.Companies.Where(c => c.Id == t.CompanyId).Select(c => c.Name).First(),
                 t.User!.Name,
@@ -254,8 +339,14 @@ public class SupportService(IApplicationDbContext db) : ISupportService
                             : m.SenderType == SupportSenderType.SuperAdmin ? SupportTeamName
                             : m.SenderUser!.Name,
                         m.MessageText,
-                        m.SentAt))
-                    .ToList()))
+                        m.SentAt,
+                        m.IsRead,
+                        m.ReadAt))
+                    .ToList(),
+                db.SupportTicketViews
+                    .Where(v => v.TicketId == t.Id && v.UserId == viewerId)
+                    .Select(v => (DateTime?)v.ClearedAt)
+                    .FirstOrDefault()))
             .ToListAsync(cancellationToken);
 
         var order = ids.Select((id, index) => (id, index)).ToDictionary(x => x.id, x => x.index);
