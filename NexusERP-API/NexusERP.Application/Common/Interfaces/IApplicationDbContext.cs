@@ -26,6 +26,8 @@ public interface IApplicationDbContext
     DbSet<OtpCode> OtpCodes { get; }
     DbSet<CustomRole> CustomRoles { get; }
     DbSet<Employee> Employees { get; }
+    DbSet<SupportTicket> SupportTickets { get; }
+    DbSet<SupportMessage> SupportMessages { get; }
 
     /// <summary>Used for explicit transactions; implemented by <c>DbContext.Database</c>.</summary>
     DatabaseFacade Database { get; }

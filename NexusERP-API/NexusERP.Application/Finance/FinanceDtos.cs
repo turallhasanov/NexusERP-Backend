@@ -24,6 +24,19 @@ public sealed record FinanceTotalsDto(
 public sealed record StoreFinanceRowDto(string? StoreId, string Name, FinanceTotalsDto Totals);
 
 /// <summary>
+/// One period of the mizan. <c>key</c> is the Azerbaijani calendar day ("2026-10-26"), month ("2026-10") or year
+/// ("2026"); <c>from</c>/<c>to</c> are its bounds in UTC (<c>to</c> exclusive).
+/// </summary>
+public sealed record FinanceMizanRowDto(string Key, DateTime From, DateTime To, FinanceTotalsDto Totals);
+
+/// <summary>
+/// GET /api/finance/mizan → { "ok": true, "period", "storeId", "rows": [ ... ] }, newest first. Rows are the periods
+/// with sales or expenses, the current one, and (monthly, yearly) every period with salaries since the first hire, within
+/// the last 60 days, 24 months or 10 years. The current row equals GET /api/finance/summary for the same period.
+/// </summary>
+public sealed record FinanceMizanResponseDto(string Period, string? StoreId, IReadOnlyList<FinanceMizanRowDto> Rows) : SuccessResponse;
+
+/// <summary>
 /// GET /api/finance/summary → { "ok": true, "period", "from", "to", "storeId", "totals", "stores": [ ... ] }.
 /// <c>from</c>/<c>to</c> are the period's bounds in UTC (<c>to</c> exclusive). With a store, totals and the single
 /// row are that store's; without, totals cover the whole company and the rows break it down by store.

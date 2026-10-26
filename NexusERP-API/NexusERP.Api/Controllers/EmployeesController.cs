@@ -8,7 +8,8 @@ namespace NexusERP.Api.Controllers;
 
 /// <summary>
 /// Staff list (İnsan resursları). Every company user can read it (the dashboard and finance reports total the
-/// payroll); hiring, leave, termination and the termination order are for admins and IT admins only.
+/// payroll); hiring, leave, termination and the termination order are for admins and IT admins only, and deleting
+/// an employee for IT admins only.
 /// </summary>
 [Authorize, RequireCompany]
 [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized)]
@@ -65,6 +66,17 @@ public class EmployeesController(IEmployeeService employeeService) : ApiControll
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Terminate(string id, [FromBody] TerminateEmployeeRequestDto request, CancellationToken cancellationToken) =>
         ToActionResult(await employeeService.TerminateAsync(CurrentCompanyId, id, request, cancellationToken));
+
+    /// <summary>
+    /// Deletes the employee for good. IT admins ("itadmin") only: company admins, staff and platform admins viewing the
+    /// company get 403.
+    /// </summary>
+    [HttpDelete("{id}")]
+    [Authorize(Roles = AppRoles.ITAdmin)]
+    [ProducesResponseType<SuccessResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Delete(string id, CancellationToken cancellationToken) =>
+        ToActionResult(await employeeService.DeleteAsync(CurrentCompanyId, id, cancellationToken));
 
     /// <summary>Data for the printable termination order (işdən çıxma əmri); 404 until the employee is terminated.</summary>
     [HttpGet("{id}/termination-document")]

@@ -6,6 +6,8 @@ namespace NexusERP.Application.Stores;
 /// <summary>Fields are nullable so missing values reach our own validation instead of the framework's.</summary>
 public sealed record CreateStoreRequestDto(string? Name, string? WarehouseId, string? Address);
 
+public sealed record UpdateStoreRequestDto(string? Name, string? WarehouseId, string? Address);
+
 /// <summary>The warehouse a store is supplied from, embedded in store responses.</summary>
 public sealed record StoreWarehouseDto(string Id, string Code, string Name)
 {
@@ -21,7 +23,7 @@ public sealed record StoreDto(
     string WarehouseId,
     StoreWarehouseDto Warehouse);
 
-/// <summary>POST /api/stores → { "ok": true, "id", "code", "name", "address", "isActive", "warehouseId", "warehouse": { ... } }</summary>
+/// <summary>POST /api/stores and PUT /api/stores/{id} → { "ok": true, "id", "code", "name", "address", "isActive", "warehouseId", "warehouse": { ... } }</summary>
 public sealed record StoreResponseDto(
     string Id,
     string Code,

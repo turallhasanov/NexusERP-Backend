@@ -22,4 +22,15 @@ public class FinanceController(IFinanceService financeService) : ApiControllerBa
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetSummary([FromQuery] string? storeId, [FromQuery] string? period, CancellationToken cancellationToken) =>
         ToActionResult(await financeService.GetSummaryAsync(CurrentCompanyId, storeId, period, cancellationToken));
+
+    /// <summary>
+    /// The mizan: the same profit and loss as the summary, one row per day, month or year (newest first, within the
+    /// last 60 days, 24 months or 10 years). The current row equals the summary for that period.
+    /// </summary>
+    [HttpGet("mizan")]
+    [ProducesResponseType<FinanceMizanResponseDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetMizan([FromQuery] string? storeId, [FromQuery] string? period, CancellationToken cancellationToken) =>
+        ToActionResult(await financeService.GetMizanAsync(CurrentCompanyId, storeId, period, cancellationToken));
 }

@@ -218,6 +218,21 @@ public class EmployeeService(IApplicationDbContext db) : IEmployeeService
         return new TerminationDocumentResponseDto(document.Document);
     }
 
+    /// <summary>
+    /// Removes the employee for good, with their leave and termination order; payroll reports stop counting them,
+    /// past periods included. Nothing else references an employee, so there is nothing to block it.
+    /// </summary>
+    public async Task<Result<SuccessResponse>> DeleteAsync(string companyId, string id, CancellationToken cancellationToken)
+    {
+        var deleted = await db.Employees
+            .Where(e => e.Id == id && e.CompanyId == companyId)
+            .ExecuteDeleteAsync(cancellationToken);
+
+        return deleted == 0
+            ? Result<SuccessResponse>.Failure(ErrorType.NotFound, EmployeeNotFound)
+            : new SuccessResponse();
+    }
+
     private Task<Employee?> FindAsync(string companyId, string id, CancellationToken cancellationToken) =>
         db.Employees.FirstOrDefaultAsync(e => e.Id == id && e.CompanyId == companyId, cancellationToken);
 

@@ -6,7 +6,11 @@ using NexusERP.Domain.Enums;
 namespace NexusERP.Application.CashRegisters;
 
 /// <summary>Body of POST /api/cash-registers. Nullable so missing values reach our own validation.</summary>
-public sealed record CreateCashRegisterRequestDto(string? Name);
+/// <summary>
+/// Body of POST /api/cash-registers. <c>openingBalance</c> (optional) is the money already in the register: it is
+/// recorded as an income transaction "Başlanğıc qalıq", so the register can pay expenses right away.
+/// </summary>
+public sealed record CreateCashRegisterRequestDto(string? Name, decimal? OpeningBalance = null);
 
 /// <summary>Row in GET /api/cash-registers.</summary>
 public sealed record CashRegisterDto(string Id, string Code, string Name, decimal Balance, bool IsActive);
