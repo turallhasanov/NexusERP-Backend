@@ -19,6 +19,16 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddApplicationServices();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<NexusERP.Application.Common.Interfaces.ICurrentUserContext, NexusERP.Api.Services.HttpCurrentUserContext>();
+
+// Live support chat: same JSON shape as the REST API (camelCase, enums as names).
+builder.Services
+    .AddSignalR()
+    .AddJsonProtocol(options =>
+        options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)));
+builder.Services.AddSingleton<Microsoft.AspNetCore.SignalR.IUserIdProvider, NexusERP.Api.Hubs.SubClaimUserIdProvider>();
+builder.Services.AddScoped<NexusERP.Application.Support.ISupportNotifier, NexusERP.Api.Hubs.SignalRSupportNotifier>();
 builder.Services.AddInfrastructureServices(builder.Configuration, builder.Environment.IsDevelopment());
 builder.Services.AddOptions<SystemInfoSettings>().Bind(builder.Configuration.GetSection(SystemInfoSettings.SectionName));
 
@@ -48,6 +58,16 @@ builder.Services
         // Default 401/403 have empty bodies; keep them in the { "ok": false, "error": "..." } shape.
         options.Events = new JwtBearerEvents
         {
+            // Browsers cannot set headers on WebSockets: the hub's token comes as ?access_token=, on /hubs only.
+            OnMessageReceived = context =>
+            {
+                var token = context.Request.Query["access_token"];
+
+                if (!string.IsNullOrEmpty(token) && context.HttpContext.Request.Path.StartsWithSegments("/hubs"))
+                    context.Token = token;
+
+                return Task.CompletedTask;
+            },
             OnChallenge = async context =>
             {
                 context.HandleResponse();
@@ -112,6 +132,9 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
+// The seeder below queries Users, so the schema must match the model first (Development applies pending migrations).
+await app.Services.MigrateDatabaseAsync(applyPending: app.Environment.IsDevelopment());
+
 // Creates the platform administrator from the "SuperAdmin" section (if configured) before serving requests.
 await app.Services.SeedSuperAdminAsync();
 
@@ -135,6 +158,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<NexusERP.Api.Hubs.SupportChatHub>(NexusERP.Api.Hubs.SupportChatHub.Path);
 
 app.Run();
 

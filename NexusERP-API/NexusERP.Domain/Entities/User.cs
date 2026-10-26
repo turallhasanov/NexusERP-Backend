@@ -18,6 +18,9 @@ public class User
 
     public string Role { get; set; } = "admin";
 
+    /// <summary>The company's <see cref="CustomRole"/> given to this user, if any.</summary>
+    public string? CustomRoleId { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     /// <summary>Inactive users cannot log in.</summary>

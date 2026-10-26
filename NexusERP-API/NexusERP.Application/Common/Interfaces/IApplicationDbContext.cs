@@ -24,6 +24,12 @@ public interface IApplicationDbContext
     DbSet<ExpenseCategory> ExpenseCategories { get; }
     DbSet<Expense> Expenses { get; }
     DbSet<OtpCode> OtpCodes { get; }
+    DbSet<CustomRole> CustomRoles { get; }
+    DbSet<Employee> Employees { get; }
+    DbSet<SupportTicket> SupportTickets { get; }
+    DbSet<SupportMessage> SupportMessages { get; }
+    DbSet<SupportTicketView> SupportTicketViews { get; }
+    DbSet<AuditLog> AuditLogs { get; }
 
     /// <summary>Used for explicit transactions; implemented by <c>DbContext.Database</c>.</summary>
     DatabaseFacade Database { get; }

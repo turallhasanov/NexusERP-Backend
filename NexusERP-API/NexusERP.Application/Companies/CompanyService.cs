@@ -155,7 +155,15 @@ public class CompanyService(IApplicationDbContext db, IJwtTokenGenerator jwtToke
             .AsNoTracking()
             .Where(u => u.CompanyId == companyId)
             .OrderBy(u => u.CreatedAt)
-            .Select(u => new CompanyUserDto(u.Id, u.Name, u.Email, u.Role, u.IsActive, u.CreatedAt))
+            .Select(u => new CompanyUserDto(
+                u.Id,
+                u.Name,
+                u.Email,
+                u.Role,
+                u.CustomRoleId,
+                db.CustomRoles.Where(r => r.Id == u.CustomRoleId).Select(r => r.Name).FirstOrDefault(),
+                u.IsActive,
+                u.CreatedAt))
             .ToListAsync(cancellationToken);
 
         return new ItemsResponseDto<CompanyUserDto>(users);
@@ -188,7 +196,11 @@ public class CompanyService(IApplicationDbContext db, IJwtTokenGenerator jwtToke
             await db.SaveChangesAsync(cancellationToken);
         }
 
-        return new CompanyUserResponseDto(CompanyUserDto.From(user));
+        var customRoleName = user.CustomRoleId is null
+            ? null
+            : await db.CustomRoles.Where(r => r.Id == user.CustomRoleId).Select(r => r.Name).FirstOrDefaultAsync(cancellationToken);
+
+        return new CompanyUserResponseDto(CompanyUserDto.From(user, customRoleName));
     }
 
     public Task<CompanyStatus?> GetStatusAsync(string companyId, CancellationToken cancellationToken) =>

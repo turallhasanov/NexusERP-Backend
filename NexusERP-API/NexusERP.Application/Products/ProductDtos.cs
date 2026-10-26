@@ -83,3 +83,9 @@ public sealed record ProductResponseDto(
             product.UnitId,
             new UnitDto(unit.Id, unit.Name, unit.ShortName));
 }
+
+/// <summary>
+/// DELETE /api/products/{id} → { "ok": true, "deactivated", "message" }. <c>deactivated</c> is true when documents
+/// still reference the product, so it was hidden from the catalog instead of removed.
+/// </summary>
+public sealed record ProductDeleteResponseDto(bool Deactivated, string Message) : SuccessResponse;

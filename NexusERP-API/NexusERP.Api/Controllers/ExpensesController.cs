@@ -23,4 +23,12 @@ public class ExpensesController(IExpenseService expenseService) : ApiControllerB
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Create([FromBody] CreateExpenseRequestDto request, CancellationToken cancellationToken) =>
         ToActionResult(await expenseService.CreateAsync(CurrentCompanyId, request, cancellationToken));
+
+    /// <summary>Moves the expense to another store, or to none (company-wide). Admins and IT admins only.</summary>
+    [HttpPut("{id}/store")]
+    [Authorize(Roles = AppRoles.CompanyManagers)]
+    [ProducesResponseType<ExpenseResponseDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateStore(string id, [FromBody] UpdateExpenseStoreRequestDto request, CancellationToken cancellationToken) =>
+        ToActionResult(await expenseService.UpdateStoreAsync(CurrentCompanyId, id, request, cancellationToken));
 }

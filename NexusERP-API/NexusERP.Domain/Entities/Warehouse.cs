@@ -10,5 +10,13 @@ public class Warehouse
 
     public string Name { get; set; } = string.Empty;
     public string? Address { get; set; }
+
+    /// <summary>Person in charge of the warehouse (məsul şəxs), free text.</summary>
+    public string? ResponsiblePerson { get; set; }
+
+    /// <summary>Planned capacity in stock units (tutum); informational, not enforced on receipts.</summary>
+    public decimal? Capacity { get; set; }
+
+    /// <summary>False once deleted while documents still reference it; hidden from lists and new documents.</summary>
     public bool IsActive { get; set; } = true;
 }

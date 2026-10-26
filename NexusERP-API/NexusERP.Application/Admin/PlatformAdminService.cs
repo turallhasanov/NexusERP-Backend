@@ -29,6 +29,7 @@ public class PlatformAdminService(
     {
         var tenants = await db.Companies
             .AsNoTracking()
+            .Where(c => c.Status != CompanyStatus.Deleted)
             .OrderByDescending(c => c.CreatedAt)
             .Select(c => new TenantDto(c.Id, c.Name, c.Voen, c.CreatedAt, c.Status, db.Users.Count(u => u.CompanyId == c.Id), c.InviteCode))
             .ToListAsync(cancellationToken);
@@ -38,7 +39,8 @@ public class PlatformAdminService(
 
     public async Task<Result<TenantDetailsResponseDto>> GetTenantAsync(string tenantId, CancellationToken cancellationToken)
     {
-        var company = await db.Companies.AsNoTracking().FirstOrDefaultAsync(c => c.Id == tenantId, cancellationToken);
+        var company = await db.Companies.AsNoTracking().FirstOrDefaultAsync(
+            c => c.Id == tenantId && c.Status != CompanyStatus.Deleted, cancellationToken);
 
         if (company is null)
             return Result<TenantDetailsResponseDto>.Failure(ErrorType.NotFound, TenantNotFound);
@@ -144,7 +146,7 @@ public class PlatformAdminService(
         if (error is not null)
             return Result<TenantUserResponseDto>.Failure(ErrorType.Validation, error);
 
-        if (!await db.Companies.AnyAsync(c => c.Id == tenantId, cancellationToken))
+        if (!await db.Companies.AnyAsync(c => c.Id == tenantId && c.Status != CompanyStatus.Deleted, cancellationToken))
             return Result<TenantUserResponseDto>.Failure(ErrorType.NotFound, TenantNotFound);
 
         if (email == AuthService.DemoEmail || await db.Users.AnyAsync(u => u.Email == email, cancellationToken))
@@ -183,12 +185,13 @@ public class PlatformAdminService(
 
     public async Task<Result<TenantResponseDto>> UpdateStatusAsync(string tenantId, UpdateTenantStatusRequestDto request, CancellationToken cancellationToken)
     {
-        if (request.Status is not { } status || !Enum.IsDefined(status))
+        // "deleted" is set by DELETE /api/admin/tenants/{id} only, and a deleted company cannot be brought back here.
+        if (request.Status is not { } status || !Enum.IsDefined(status) || status == CompanyStatus.Deleted)
             return Result<TenantResponseDto>.Failure(ErrorType.Validation, "Status yanlışdır. Mümkün dəyərlər: active, passive, suspended.");
 
         var company = await db.Companies.FindAsync([tenantId], cancellationToken);
 
-        if (company is null)
+        if (company is null || company.Status == CompanyStatus.Deleted)
             return Result<TenantResponseDto>.Failure(ErrorType.NotFound, TenantNotFound);
 
         if (company.Status != status)
@@ -203,11 +206,29 @@ public class PlatformAdminService(
         return new TenantResponseDto(new TenantDto(company.Id, company.Name, company.Voen, company.CreatedAt, company.Status, userCount, company.InviteCode));
     }
 
+    /// <summary>
+    /// Soft delete: the company gets the Deleted status and keeps every record (users, documents, stock, finance),
+    /// so nothing that references it breaks. Its users are signed out on their next request.
+    /// </summary>
+    public async Task<Result<SuccessResponse>> DeleteTenantAsync(string tenantId, CancellationToken cancellationToken)
+    {
+        var company = await db.Companies.FindAsync([tenantId], cancellationToken);
+
+        if (company is null || company.Status == CompanyStatus.Deleted)
+            return Result<SuccessResponse>.Failure(ErrorType.NotFound, TenantNotFound);
+
+        logger.LogInformation("Platform admin deleted company {CompanyId} (status was {From})", company.Id, company.Status);
+        company.Status = CompanyStatus.Deleted;
+        await db.SaveChangesAsync(cancellationToken);
+
+        return new SuccessResponse();
+    }
+
     public async Task<Result<DashboardSummaryResponseDto>> GetTenantDashboardSummaryAsync(
         string tenantId, decimal? lowStockThreshold, DateTime? from, DateTime? to, CancellationToken cancellationToken)
     {
         // The dashboard query answers zeros for an unknown id; an admin should be told it does not exist.
-        if (!await db.Companies.AnyAsync(c => c.Id == tenantId, cancellationToken))
+        if (!await db.Companies.AnyAsync(c => c.Id == tenantId && c.Status != CompanyStatus.Deleted, cancellationToken))
             return Result<DashboardSummaryResponseDto>.Failure(ErrorType.NotFound, TenantNotFound);
 
         return await dashboardService.GetSummaryAsync(tenantId, lowStockThreshold, from, to, cancellationToken);
@@ -221,7 +242,8 @@ public class PlatformAdminService(
         if (superAdmin is not { Role: AppRoles.SuperAdmin, IsActive: true })
             return Result<ImpersonationResponseDto>.Failure(ErrorType.Forbidden, "Bu əməliyyat üçün icazəniz yoxdur.");
 
-        var company = await db.Companies.AsNoTracking().FirstOrDefaultAsync(c => c.Id == tenantId, cancellationToken);
+        var company = await db.Companies.AsNoTracking().FirstOrDefaultAsync(
+            c => c.Id == tenantId && c.Status != CompanyStatus.Deleted, cancellationToken);
 
         if (company is null)
             return Result<ImpersonationResponseDto>.Failure(ErrorType.NotFound, TenantNotFound);
@@ -245,25 +267,27 @@ public class PlatformAdminService(
         var latencyMs = (int)stopwatch.ElapsedMilliseconds;
         var since = DateTime.UtcNow.AddDays(-30);
 
-        var byStatus = await db.Companies
-            .AsNoTracking()
+        // Deleted companies are left out of every figure, as they are out of the tenant list.
+        var companies = db.Companies.AsNoTracking().Where(c => c.Status != CompanyStatus.Deleted);
+
+        var byStatus = await companies
             .GroupBy(c => c.Status)
             .Select(g => new { Status = g.Key, Count = g.Count() })
             .ToListAsync(cancellationToken);
 
         int CountOf(CompanyStatus status) => byStatus.FirstOrDefault(s => s.Status == status)?.Count ?? 0;
 
-        var newTenants = await db.Companies.CountAsync(c => c.CreatedAt >= since, cancellationToken);
-        var totalUsers = await db.Users.CountAsync(u => u.CompanyId != null, cancellationToken);
+        var newTenants = await companies.CountAsync(c => c.CreatedAt >= since, cancellationToken);
+        var totalUsers = await db.Users.CountAsync(u => companies.Any(c => c.Id == u.CompanyId), cancellationToken);
 
         // Only approved sales: drafts are not revenue yet.
-        var approvedSales = db.Sales.AsNoTracking().Where(s => s.Status == SaleStatus.Approved);
+        var approvedSales = db.Sales.AsNoTracking()
+            .Where(s => s.Status == SaleStatus.Approved && companies.Any(c => c.Id == s.CompanyId));
         var totalRevenue = await approvedSales.SumAsync(s => s.TotalAmount, cancellationToken);
         var recentRevenue = await approvedSales.Where(s => s.DocumentDate >= since).SumAsync(s => s.TotalAmount, cancellationToken);
 
         // Ordered on an anonymous projection: SQL cannot sort by a property of a record built by its constructor.
-        var topTenants = (await db.Companies
-                .AsNoTracking()
+        var topTenants = (await companies
                 .Select(c => new
                 {
                     c.Id,

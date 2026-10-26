@@ -64,6 +64,7 @@ public static partial class AccountRules
     {
         CompanyStatus.Active => null,
         CompanyStatus.Suspended => "Şirkətinizin hesabı dondurulub. Ətraflı məlumat üçün platforma administratoru ilə əlaqə saxlayın.",
+        CompanyStatus.Deleted => "Şirkətinizin hesabı silinib. Ətraflı məlumat üçün platforma administratoru ilə əlaqə saxlayın.",
         _ => "Şirkətinizin hesabı passiv vəziyyətdədir. Ətraflı məlumat üçün platforma administratoru ilə əlaqə saxlayın."
     };
 }

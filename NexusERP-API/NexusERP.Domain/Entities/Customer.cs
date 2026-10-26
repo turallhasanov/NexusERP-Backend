@@ -16,4 +16,10 @@ public class Customer
     public string? Phone { get; set; }
     public string? Address { get; set; }
     public bool IsActive { get; set; } = true;
+
+    /// <summary>
+    /// Set on accounts the system creates and finds by key, e.g. "khazar-online" for the account online orders are
+    /// booked to; null for customers created by users.
+    /// </summary>
+    public string? SystemKey { get; set; }
 }

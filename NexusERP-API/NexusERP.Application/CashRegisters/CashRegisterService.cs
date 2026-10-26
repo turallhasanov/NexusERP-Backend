@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using NexusERP.Application.Audit;
 using NexusERP.Application.Common;
 using NexusERP.Application.Common.Interfaces;
 using NexusERP.Domain.Entities;
@@ -6,7 +7,7 @@ using NexusERP.Domain.Enums;
 
 namespace NexusERP.Application.CashRegisters;
 
-public class CashRegisterService(IApplicationDbContext db) : ICashRegisterService
+public class CashRegisterService(IApplicationDbContext db, IAuditLogger audit) : ICashRegisterService
 {
     private const string CodePrefix = "KSA";
 
@@ -20,8 +21,16 @@ public class CashRegisterService(IApplicationDbContext db) : ICashRegisterServic
     private const string InsufficientFunds = "Kassada kifayət qədər vəsait yoxdur.";
     private const string BalanceOverflow = "Kassa balansı həddindən artıq böyük olar.";
 
+    // The register every company gets when it has none, so payments always have somewhere to go.
+    private const string DefaultName = "Əsas kassa";
+    private const string DefaultCode = CodePrefix + "-001";
+
+    /// <summary>The company's registers; one with none gets "Əsas kassa" (KSA-001) first.</summary>
     public async Task<Result<ItemsResponseDto<CashRegisterDto>>> GetAllAsync(string companyId, CancellationToken cancellationToken)
     {
+        if (!await db.CashRegisters.AnyAsync(c => c.CompanyId == companyId, cancellationToken))
+            await CreateDefaultAsync(companyId, cancellationToken);
+
         var items = await db.CashRegisters
             .AsNoTracking()
             .Where(c => c.CompanyId == companyId)
@@ -42,9 +51,32 @@ public class CashRegisterService(IApplicationDbContext db) : ICashRegisterServic
         if (name.Length > NameMaxLength)
             return Result<CashRegisterResponseDto>.Failure(ErrorType.Validation, $"Kassa adı {NameMaxLength} simvoldan uzun ola bilməz.");
 
-        var cashRegister = new CashRegister { CompanyId = companyId, Name = name };
+        var openingBalance = Math.Round(request.OpeningBalance ?? 0, 2, MidpointRounding.AwayFromZero);
+
+        if (openingBalance < 0)
+            return Result<CashRegisterResponseDto>.Failure(ErrorType.Validation, "Başlanğıc qalıq mənfi ola bilməz.");
+
+        if (openingBalance > MaxMoney)
+            return Result<CashRegisterResponseDto>.Failure(ErrorType.Validation, "Başlanğıc qalıq həddindən artıq böyükdür.");
+
+        var cashRegister = new CashRegister { CompanyId = companyId, Name = name, Balance = openingBalance };
 
         db.CashRegisters.Add(cashRegister);
+
+        // The register and its opening income go in the same SaveChanges, so neither exists without the other.
+        if (openingBalance > 0)
+        {
+            db.Transactions.Add(new Transaction
+            {
+                CompanyId = companyId,
+                CashRegisterId = cashRegister.Id,
+                TransactionType = TransactionType.Income,
+                Amount = openingBalance,
+                Description = "Başlanğıc qalıq",
+                TransactionDate = DateTime.UtcNow
+            });
+        }
+
         await SequentialCode.AssignAndSaveAsync(
             db,
             db.CashRegisters.Where(c => c.CompanyId == companyId).Select(c => c.Code),
@@ -52,7 +84,30 @@ public class CashRegisterService(IApplicationDbContext db) : ICashRegisterServic
             code => cashRegister.Code = code,
             cancellationToken);
 
+        await audit.LogAsync(companyId, AuditModule.Finance, AuditAction.Create,
+            openingBalance > 0
+                ? $"'{cashRegister.Code} · {cashRegister.Name}' kassası yaradıldı (başlanğıc qalıq {openingBalance:0.00} ₼)"
+                : $"'{cashRegister.Code} · {cashRegister.Name}' kassası yaradıldı",
+            cancellationToken);
+
         return CashRegisterResponseDto.From(cashRegister);
+    }
+
+    // KSA-001 cannot exist yet when a company has no register, so a fixed code is safe; when two first requests race,
+    // the unique (CompanyId, Code) index keeps one and the other simply finds it.
+    private async Task CreateDefaultAsync(string companyId, CancellationToken cancellationToken)
+    {
+        var cashRegister = new CashRegister { CompanyId = companyId, Code = DefaultCode, Name = DefaultName };
+        db.CashRegisters.Add(cashRegister);
+
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            db.CashRegisters.Entry(cashRegister).State = EntityState.Detached;
+        }
     }
 
     public async Task<Result<ItemsResponseDto<TransactionDto>>> GetTransactionsAsync(string companyId, string? cashRegisterId, CancellationToken cancellationToken)
@@ -199,6 +254,16 @@ public class CashRegisterService(IApplicationDbContext db) : ICashRegisterServic
             .Where(t => t.Id == transaction.Id)
             .Select(TransactionDto.Projection)
             .SingleAsync(cancellationToken);
+
+        var kind = type switch
+        {
+            TransactionType.Income => "mədaxil",
+            TransactionType.Expense => "məxaric",
+            _ => "köçürmə"
+        };
+        await audit.LogAsync(companyId, AuditModule.Finance, AuditAction.Create,
+            $"'{created.CashRegister.Name}' kassasında {amount:0.00} ₼ {kind} əməliyyatı qeyd edildi{(description is null ? "" : $" ({description})")}",
+            cancellationToken);
 
         return TransactionResponseDto.From(created);
     }

@@ -36,4 +36,16 @@ public class ProductsController(IProductService productService) : ApiControllerB
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Create([FromBody] CreateProductRequestDto request, CancellationToken cancellationToken) =>
         ToActionResult(await productService.CreateAsync(CurrentCompanyId, request, cancellationToken));
+
+    /// <summary>
+    /// Removes the product, or deactivates it when purchases or sales reference it; 409 while a warehouse holds
+    /// it. Admins and IT admins only; staff get 403.
+    /// </summary>
+    [HttpDelete("{id}")]
+    [Authorize(Roles = AppRoles.CompanyManagers)]
+    [ProducesResponseType<ProductDeleteResponseDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Delete(string id, CancellationToken cancellationToken) =>
+        ToActionResult(await productService.DeleteAsync(CurrentCompanyId, id, cancellationToken));
 }
