@@ -4,7 +4,7 @@ namespace NexusERP.Application.Reports;
 
 /// <summary>
 /// Row in GET /api/reports/inventory-value: stock held in one warehouse, valued at each product's
-/// current purchase price.
+/// current purchase price, or at its sale price while it has no purchase price.
 /// </summary>
 public sealed record InventoryReportDto(
     string WarehouseId,

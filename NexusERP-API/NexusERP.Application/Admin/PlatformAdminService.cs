@@ -352,7 +352,17 @@ public class PlatformAdminService(
             .ToList();
     }
 
-    private static string StatusName(SaleStatus status) => status == SaleStatus.Approved ? "approved" : "draft";
+    private static string StatusName(SaleStatus status) => status switch
+    {
+        SaleStatus.Approved => "approved",
+        SaleStatus.Cancelled => "cancelled",
+        _ => "draft"
+    };
 
-    private static string StatusName(PurchaseStatus status) => status == PurchaseStatus.Approved ? "approved" : "draft";
+    private static string StatusName(PurchaseStatus status) => status switch
+    {
+        PurchaseStatus.Approved => "approved",
+        PurchaseStatus.Cancelled => "cancelled",
+        _ => "draft"
+    };
 }

@@ -2,9 +2,12 @@ using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using NexusERP.Application.Common.Interfaces;
+using NexusERP.Application.Integration;
 using NexusERP.Infrastructure.Authentication;
 using NexusERP.Infrastructure.Email;
+using NexusERP.Infrastructure.Integration;
 using NexusERP.Infrastructure.Persistence;
 
 namespace NexusERP.Infrastructure;
@@ -19,6 +22,38 @@ public static class DependencyInjection
         services.AddDbContext<AppDbContext>(options => options.UseSqlServer(connectionString));
         services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<AppDbContext>());
         services.AddScoped<IStockWriter, StockWriter>();
+
+        // Khazar storefront catalog, read by the "Data Inteqrasiyası" action.
+        services.Configure<KhazarSettings>(configuration.GetSection(KhazarSettings.SectionName));
+        services.AddHttpClient<IKhazarCatalogClient, KhazarCatalogClient>((sp, client) =>
+        {
+            var settings = sp.GetRequiredService<IOptions<KhazarSettings>>().Value;
+
+            if (Uri.TryCreate(settings.BaseUrl, UriKind.Absolute, out var baseUri))
+                client.BaseAddress = baseUri.AbsoluteUri.EndsWith('/') ? baseUri : new Uri(baseUri.AbsoluteUri + "/");
+
+            client.Timeout = TimeSpan.FromSeconds(settings.TimeoutSeconds > 0 ? settings.TimeoutSeconds : 30);
+        });
+
+        services.AddHttpClient<IKhazarOrderClient, KhazarOrderClient>((sp, client) =>
+        {
+            var settings = sp.GetRequiredService<IOptions<KhazarSettings>>().Value;
+
+            if (Uri.TryCreate(settings.BaseUrl, UriKind.Absolute, out var baseUri))
+                client.BaseAddress = baseUri.AbsoluteUri.EndsWith('/') ? baseUri : new Uri(baseUri.AbsoluteUri + "/");
+
+            client.Timeout = TimeSpan.FromSeconds(settings.TimeoutSeconds > 0 ? settings.TimeoutSeconds : 30);
+        });
+
+        services.AddHttpClient<IKhazarProductClient, KhazarProductClient>((sp, client) =>
+        {
+            var settings = sp.GetRequiredService<IOptions<KhazarSettings>>().Value;
+
+            if (Uri.TryCreate(settings.BaseUrl, UriKind.Absolute, out var baseUri))
+                client.BaseAddress = baseUri.AbsoluteUri.EndsWith('/') ? baseUri : new Uri(baseUri.AbsoluteUri + "/");
+
+            client.Timeout = TimeSpan.FromSeconds(settings.TimeoutSeconds > 0 ? settings.TimeoutSeconds : 30);
+        });
 
         services.AddOptions<JwtSettings>()
             .Bind(configuration.GetSection(JwtSettings.SectionName))

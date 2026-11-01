@@ -28,9 +28,11 @@ public class ReportService(IApplicationDbContext db) : IReportService
                 Quantity = db.Stocks
                     .Where(s => s.CompanyId == companyId && s.WarehouseId == w.Id)
                     .Sum(s => (decimal?)s.Quantity) ?? 0,
+                // A product without a purchase price (e.g. one the Khazar catalog import added, which only carries
+                // a sale price) is valued at its sale price instead of counting for nothing.
                 Value = db.Stocks
                     .Where(s => s.CompanyId == companyId && s.WarehouseId == w.Id)
-                    .Sum(s => (decimal?)(s.Quantity * s.Product!.PurchasePrice)) ?? 0
+                    .Sum(s => (decimal?)(s.Quantity * (s.Product!.PurchasePrice > 0 ? s.Product.PurchasePrice : s.Product.SalePrice))) ?? 0
             })
             .ToListAsync(cancellationToken);
 

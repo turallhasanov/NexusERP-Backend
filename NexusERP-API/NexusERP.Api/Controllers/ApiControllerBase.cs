@@ -32,6 +32,7 @@ public abstract class ApiControllerBase : ControllerBase
             ErrorType.Forbidden => StatusCodes.Status403Forbidden,
             ErrorType.TooManyRequests => StatusCodes.Status429TooManyRequests,
             ErrorType.ServiceUnavailable => StatusCodes.Status503ServiceUnavailable,
+            ErrorType.StockShortage => StatusCodes.Status422UnprocessableEntity,
             _ => StatusCodes.Status500InternalServerError
         };
 

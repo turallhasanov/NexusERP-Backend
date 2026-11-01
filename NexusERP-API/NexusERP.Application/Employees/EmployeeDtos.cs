@@ -5,11 +5,18 @@ using NexusERP.Domain.Enums;
 
 namespace NexusERP.Application.Employees;
 
-/// <summary>Fields are nullable so missing values reach our own validation; <c>storeId</c> is optional.</summary>
-public sealed record CreateEmployeeRequestDto(string? FullName, string? Title, string? Department, DateOnly? HiredAt, decimal? Salary, string? StoreId = null);
+/// <summary>
+/// Fields are nullable so missing values reach our own validation; <c>storeId</c>, <c>fin</c> and
+/// <c>probationMonths</c> (0–3) are optional.
+/// </summary>
+public sealed record CreateEmployeeRequestDto(
+    string? FullName, string? Title, string? Department, DateOnly? HiredAt, decimal? Salary,
+    string? StoreId = null, string? Fin = null, int? ProbationMonths = null);
 
 /// <summary>Body of PUT /api/employees/{id}: the whole profile; <c>storeId</c> null means company-wide staff.</summary>
-public sealed record UpdateEmployeeRequestDto(string? FullName, string? Title, string? Department, DateOnly? HiredAt, decimal? Salary, string? StoreId);
+public sealed record UpdateEmployeeRequestDto(
+    string? FullName, string? Title, string? Department, DateOnly? HiredAt, decimal? Salary, string? StoreId,
+    string? Fin = null, int? ProbationMonths = null);
 
 /// <summary>Body of POST /api/employees/{id}/vacation. <c>leaveType</c> defaults to annual leave.</summary>
 public sealed record VacationRequestDto(DateOnly? StartDate, DateOnly? EndDate, LeaveType? LeaveType, string? Note);
@@ -32,12 +39,17 @@ public sealed record EmployeeDto(
     DateOnly? TerminatedAt,
     string? TerminationReason,
     string? TerminationOrderNumber,
-    string? StoreId)
+    string? StoreId,
+    string? Fin,
+    int? ProbationMonths,
+    string HiringOrderNumber,
+    DateOnly HiringOrderDate)
 {
     public static readonly Expression<Func<Employee, EmployeeDto>> Projection = e => new EmployeeDto(
         e.Id, e.FullName, e.Title, e.Department, e.HiredAt, e.Salary, e.Status,
         e.VacationStartDate, e.VacationEndDate, e.LeaveType, e.VacationNote,
-        e.TerminatedAt, e.TerminationReason, e.TerminationOrderNumber, e.StoreId);
+        e.TerminatedAt, e.TerminationReason, e.TerminationOrderNumber, e.StoreId,
+        e.Fin, e.ProbationMonths, e.HiringOrderNumber, e.HiringOrderDate);
 
     // Compiled once: the same mapping for an entity already in memory.
     private static readonly Func<Employee, EmployeeDto> Map = Projection.Compile();
@@ -62,3 +74,20 @@ public sealed record TerminationDocumentDto(
 
 /// <summary>GET /api/employees/{id}/termination-document → { "ok": true, "document": { ... } }</summary>
 public sealed record TerminationDocumentResponseDto(TerminationDocumentDto Document) : SuccessResponse;
+
+/// <summary>What the hiring order (işə qəbul haqqında əmr) prints.</summary>
+public sealed record HiringDocumentDto(
+    string OrderNumber,
+    DateOnly OrderDate,
+    string CompanyName,
+    string? CompanyVoen,
+    string EmployeeName,
+    string? Fin,
+    string Title,
+    string Department,
+    DateOnly HiredAt,
+    int? ProbationMonths,
+    decimal Salary);
+
+/// <summary>GET /api/employees/{id}/hiring-document → { "ok": true, "document": { ... } }</summary>
+public sealed record HiringDocumentResponseDto(HiringDocumentDto Document) : SuccessResponse;

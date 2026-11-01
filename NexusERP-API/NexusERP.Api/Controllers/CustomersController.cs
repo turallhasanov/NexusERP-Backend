@@ -21,4 +21,17 @@ public class CustomersController(ICustomerService customerService) : ApiControll
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Create([FromBody] CreateCustomerRequestDto request, CancellationToken cancellationToken) =>
         ToActionResult(await customerService.CreateAsync(CurrentCompanyId, request, cancellationToken));
+
+    /// <summary>
+    /// Removes the counterparty, or deactivates it when purchases or sales reference it (it then leaves the lists but stays
+    /// on those documents). A system counterparty such as "Khazar Online Müştəri" is refused with 400. Company admins and
+    /// IT admins only; staff get 403.
+    /// </summary>
+    [HttpDelete("{id}")]
+    [Authorize(Roles = AppRoles.CompanyManagers)]
+    [ProducesResponseType<CustomerDeleteResponseDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Delete(string id, CancellationToken cancellationToken) =>
+        ToActionResult(await customerService.DeleteAsync(CurrentCompanyId, id, cancellationToken));
 }

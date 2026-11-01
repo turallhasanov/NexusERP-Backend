@@ -5,12 +5,14 @@ using NexusERP.Application.CashRegisters;
 using NexusERP.Application.Common;
 using NexusERP.Application.Common.Interfaces;
 using NexusERP.Application.Customers;
+using NexusERP.Application.Integration;
 using NexusERP.Domain.Entities;
 using NexusERP.Domain.Enums;
 
 namespace NexusERP.Application.Sales;
 
-public class SaleService(IApplicationDbContext db, IStockWriter stockWriter, IAuditLogger audit) : ISaleService
+public class SaleService(
+    IApplicationDbContext db, IStockWriter stockWriter, IAuditLogger audit, IKhazarOrderClient khazarOrders) : ISaleService
 {
     private const string NumberPrefix = "STŞ";
 
@@ -202,8 +204,8 @@ public class SaleService(IApplicationDbContext db, IStockWriter stockWriter, IAu
     }
 
     /// <summary>
-    /// A retail order from the online store, saved as a draft sale like one from the sales form (staff approve it,
-    /// which moves stock). Idempotent on <c>externalOrderNumber</c>: a resent order returns the existing sale.
+    /// A retail order from the online store, saved as a sale and approved right away so stock moves (a shortage
+    /// leaves it a draft for staff to resolve). Idempotent on <c>externalOrderNumber</c>: a resent order returns the existing sale.
     /// </summary>
     public async Task<Result<SaleResponseDto>> CreateOnlineOrderAsync(string companyId, CreateOnlineOrderRequestDto request, CancellationToken cancellationToken)
     {
@@ -268,6 +270,131 @@ public class SaleService(IApplicationDbContext db, IStockWriter stockWriter, IAu
 
         await audit.LogAsync(companyId, AuditModule.Retail, AuditAction.Create,
             $"Khazar online sifarişi {externalOrderNumber} '{sale.DocumentNumber}' satış qaiməsi kimi qəbul edildi ({sale.TotalAmount:0.00} ₼)",
+            cancellationToken);
+
+        // The storefront has already taken the customer's order, so stock is deducted now. A shortage rolls the
+        // approval back and leaves the draft for staff; the order itself is still accepted.
+        var approval = await ApproveAsync(companyId, sale.Id, cancellationToken);
+
+        if (!approval.IsSuccess)
+            await audit.LogAsync(companyId, AuditModule.Retail, AuditAction.Update,
+                $"Khazar online sifarişi {externalOrderNumber} avtomatik təsdiqlənmədi (qaralama qaldı): {approval.Error}",
+                cancellationToken);
+
+        return SaleResponseDto.From((await FindAsync(companyId, sale.Id, cancellationToken))!);
+    }
+
+    public Task<Result<SaleResponseDto>> CancelAsync(string companyId, string id, CancellationToken cancellationToken) =>
+        CancelMatchingAsync(companyId, s => s.Id == id, "Satış sənədi tapılmadı.", notifyKhazar: true, cancellationToken);
+
+    public async Task<Result<SaleResponseDto>> CancelOnlineOrderAsync(
+        string companyId, string externalOrderNumber, CancellationToken cancellationToken)
+    {
+        var number = externalOrderNumber?.Trim();
+        if (string.IsNullOrEmpty(number))
+            return Result<SaleResponseDto>.Failure(ErrorType.Validation, "Sifariş nömrəsi tələb olunur.");
+
+        // Khazar asked for this cancellation, so it must not be asked to cancel the same order again.
+        return await CancelMatchingAsync(
+            companyId,
+            s => s.ExternalOrderNumber == number && s.Channel == SaleChannel.Online,
+            "Online sifariş tapılmadı.",
+            notifyKhazar: false,
+            cancellationToken);
+    }
+
+    private sealed record CancelTarget(
+        string Id, string DocumentNumber, string WarehouseId, SaleStatus Status, SaleChannel Channel, string? ExternalOrderNumber);
+
+    private async Task<Result<SaleResponseDto>> CancelMatchingAsync(
+        string companyId,
+        System.Linq.Expressions.Expression<Func<Sale, bool>> match,
+        string notFoundMessage,
+        bool notifyKhazar,
+        CancellationToken cancellationToken)
+    {
+        var sale = await db.Sales
+            .AsNoTracking()
+            .Where(s => s.CompanyId == companyId)
+            .Where(match)
+            .Select(s => new CancelTarget(s.Id, s.DocumentNumber, s.WarehouseId, s.Status, s.Channel, s.ExternalOrderNumber))
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (sale is null)
+            return Result<SaleResponseDto>.Failure(ErrorType.NotFound, notFoundMessage);
+
+        // A retry after a lost response must not return the stock or the money twice.
+        if (sale.Status == SaleStatus.Cancelled)
+            return SaleResponseDto.From((await FindAsync(companyId, sale.Id, cancellationToken))!);
+
+        // Khazar first: if it cannot cancel its order (down, or already delivered), nothing changes here either, so the
+        // storefront order and this sale never disagree. Its own stock is returned there.
+        if (notifyKhazar && sale.Channel == SaleChannel.Online && sale.ExternalOrderNumber is not null)
+        {
+            var khazar = await khazarOrders.CancelOrderAsync(sale.ExternalOrderNumber, cancellationToken);
+            if (!khazar.Success)
+                return Result<SaleResponseDto>.Failure(ErrorType.ServiceUnavailable, khazar.Error!);
+        }
+
+        // Status change, stock and cash register commit together or not at all; disposing without Commit rolls back.
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+
+        // Compare-and-set on the status that was read: if two cancellations race, only one matches a row,
+        // so stock and money are never returned twice.
+        var changed = await db.Sales
+            .Where(s => s.Id == sale.Id && s.Status == sale.Status)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.Status, SaleStatus.Cancelled), cancellationToken);
+
+        if (changed == 0)
+            return Result<SaleResponseDto>.Failure(ErrorType.Conflict, "Satış eyni anda dəyişdirildi. Yenidən cəhd edin.");
+
+        // A draft never took stock (approval was skipped or rolled back), so only an approved sale gives any back.
+        if (sale.Status == SaleStatus.Approved)
+        {
+            var lines = await db.SaleItems
+                .Where(i => i.SaleId == sale.Id)
+                .Select(i => new { i.ProductId, i.Quantity })
+                .ToListAsync(cancellationToken);
+
+            // Same fixed ordinal order as the decrease, so concurrent documents lock stock rows in one sequence.
+            foreach (var line in lines.GroupBy(l => l.ProductId).OrderBy(g => g.Key, StringComparer.Ordinal))
+                await stockWriter.IncreaseAsync(companyId, sale.WarehouseId, line.Key, line.Sum(l => l.Quantity), cancellationToken);
+        }
+
+        // A POS sale was paid into a cash register; take that money back out and record the reversal.
+        var payments = await db.Transactions
+            .Where(t => t.SaleId == sale.Id && t.TransactionType == TransactionType.Income)
+            .Select(t => new { t.CashRegisterId, t.Amount })
+            .ToListAsync(cancellationToken);
+
+        foreach (var payment in payments.GroupBy(p => p.CashRegisterId))
+        {
+            var amount = payment.Sum(p => p.Amount);
+
+            if (!await CashRegisterBalance.TryDecreaseAsync(db, companyId, payment.Key, amount, cancellationToken))
+                return Result<SaleResponseDto>.Failure(
+                    ErrorType.Validation,
+                    $"Kassada {amount:0.00} ₼ qalmayıb, '{sale.DocumentNumber}' satışını ləğv etmək mümkün deyil. Əvvəlcə kassaya vəsait əlavə edin.");
+
+            db.Transactions.Add(new Transaction
+            {
+                CompanyId = companyId,
+                CashRegisterId = payment.Key,
+                TransactionType = TransactionType.Expense,
+                Amount = amount,
+                Description = $"POS satışının ləğvi {sale.DocumentNumber}",
+                SaleId = sale.Id,
+                TransactionDate = DateTime.UtcNow
+            });
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+
+        await audit.LogAsync(companyId, AuditModule.Retail, AuditAction.Update,
+            sale.ExternalOrderNumber is null
+                ? $"'{sale.DocumentNumber}' satış qaiməsi ləğv edildi, məhsullar anbara qaytarıldı"
+                : $"Khazar online sifarişi {sale.ExternalOrderNumber} ləğv edildi, '{sale.DocumentNumber}' satış qaiməsi üzrə məhsullar anbara qaytarıldı",
             cancellationToken);
 
         return SaleResponseDto.From((await FindAsync(companyId, sale.Id, cancellationToken))!);

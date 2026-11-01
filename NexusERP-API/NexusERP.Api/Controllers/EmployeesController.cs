@@ -8,7 +8,7 @@ namespace NexusERP.Api.Controllers;
 
 /// <summary>
 /// Staff list (İnsan resursları). Every company user can read it (the dashboard and finance reports total the
-/// payroll); hiring, leave, termination and the termination order are for admins and IT admins only, and deleting
+/// payroll); hiring, leave, termination and the hiring and termination orders are for admins and IT admins only, and deleting
 /// an employee for IT admins only.
 /// </summary>
 [Authorize, RequireCompany]
@@ -77,6 +77,17 @@ public class EmployeesController(IEmployeeService employeeService) : ApiControll
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(string id, CancellationToken cancellationToken) =>
         ToActionResult(await employeeService.DeleteAsync(CurrentCompanyId, id, cancellationToken));
+
+    /// <summary>
+    /// Data for the printable hiring order (işə qəbul haqqında əmr), for any employee, terminated ones included. Each
+    /// request is recorded in the audit log as the order being produced.
+    /// </summary>
+    [HttpGet("{id}/hiring-document")]
+    [Authorize(Roles = AppRoles.CompanyManagers)]
+    [ProducesResponseType<HiringDocumentResponseDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetHiringDocument(string id, CancellationToken cancellationToken) =>
+        ToActionResult(await employeeService.GetHiringDocumentAsync(CurrentCompanyId, id, cancellationToken));
 
     /// <summary>Data for the printable termination order (işdən çıxma əmri); 404 until the employee is terminated.</summary>
     [HttpGet("{id}/termination-document")]

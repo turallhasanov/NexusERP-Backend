@@ -22,5 +22,10 @@
     <ProjectReference Include="..\NexusERP.Infrastructure\NexusERP.Infrastructure.csproj" />
   </ItemGroup>
 
+  <!-- A running NexusERP.Api.exe locks the DLLs in bin\ and fails the build with MSB3026/MSB3027. Only this process is
+       stopped (never dotnet.exe, which would also stop other .NET services such as the Khazar backend). -->
+  <Target Name="KillNexusERPBeforeBuild" BeforeTargets="BeforeBuild" Condition="$([MSBuild]::IsOSPlatform('Windows'))">
+    <Exec Command="taskkill /IM NexusERP.Api.exe /F 2&gt;&amp;1" IgnoreExitCode="true" IgnoreStandardErrorWarningFormat="true" StandardOutputImportance="low" StandardErrorImportance="low" />
+  </Target>
 
 </Project>

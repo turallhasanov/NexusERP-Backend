@@ -19,6 +19,12 @@ public class Product
     public decimal SalePrice { get; set; }
     public bool IsActive { get; set; } = true;
 
+    /// <summary>Site path of the product photo (/uploads/products/{file}), served by this API; null when it has none.</summary>
+    public string? ImageUrl { get; set; }
+
+    /// <summary>When true the product is also sent to the Khazar online store, where customers can buy it.</summary>
+    public bool ShowOnWebsite { get; set; }
+
     public Category? Category { get; set; }
     public Unit? Unit { get; set; }
 }

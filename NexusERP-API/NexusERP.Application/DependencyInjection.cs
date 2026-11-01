@@ -11,6 +11,7 @@ using NexusERP.Application.Expenses;
 using NexusERP.Application.Employees;
 using NexusERP.Application.Finance;
 using NexusERP.Application.Support;
+using NexusERP.Application.Integration;
 using NexusERP.Application.Inventory;
 using NexusERP.Application.Products;
 using NexusERP.Application.Purchases;
@@ -53,6 +54,7 @@ public static class DependencyInjection
         services.AddScoped<ISystemInfoService, SystemInfoService>();
         services.AddScoped<IPlatformAdminService, PlatformAdminService>();
         services.AddScoped<IRoleService, RoleService>();
+        services.AddScoped<ICatalogSyncService, CatalogSyncService>();
 
         return services;
     }
