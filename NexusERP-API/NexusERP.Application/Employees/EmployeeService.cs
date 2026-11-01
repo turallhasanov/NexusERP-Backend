@@ -11,6 +11,10 @@ public class EmployeeService(IApplicationDbContext db, IAuditLogger audit) : IEm
 {
     private const string OrderNumberPrefix = "ƏMR";
 
+    // Probation may not exceed three months (Əmək Məcəlləsi, maddə 52).
+    private const int MaxProbationMonths = 3;
+    private const int FinLength = 7;
+
     // Must match the column definitions in EmployeeConfiguration (salary is decimal(18,2)).
     private const int FullNameMaxLength = 200;
     private const int TitleMaxLength = 100;
@@ -45,7 +49,8 @@ public class EmployeeService(IApplicationDbContext db, IAuditLogger audit) : IEm
 
     public async Task<Result<EmployeeResponseDto>> CreateAsync(string companyId, CreateEmployeeRequestDto request, CancellationToken cancellationToken)
     {
-        var profile = ProfileFields.From(request.FullName, request.Title, request.Department, request.HiredAt, request.Salary, request.StoreId);
+        var profile = ProfileFields.From(
+            request.FullName, request.Title, request.Department, request.HiredAt, request.Salary, request.StoreId, request.Fin, request.ProbationMonths);
 
         if (profile.Error is not null)
             return Result<EmployeeResponseDto>.Failure(ErrorType.Validation, profile.Error);
@@ -53,14 +58,22 @@ public class EmployeeService(IApplicationDbContext db, IAuditLogger audit) : IEm
         if (profile.StoreId is not null && !await IsActiveStoreAsync(companyId, profile.StoreId, cancellationToken))
             return Result<EmployeeResponseDto>.Failure(ErrorType.NotFound, StoreNotFound);
 
-        var employee = new Employee { CompanyId = companyId };
+        var employee = new Employee { CompanyId = companyId, HiringOrderDate = Today };
         profile.ApplyTo(employee);
 
         db.Employees.Add(employee);
-        await db.SaveChangesAsync(cancellationToken);
+
+        // The hiring order is numbered per company and year of the order: ƏMR-2026-001, ƏMR-2026-002, ...
+        await SequentialCode.AssignAndSaveAsync(
+            db,
+            db.Employees.Where(e => e.CompanyId == companyId).Select(e => e.HiringOrderNumber),
+            $"{OrderNumberPrefix}-{employee.HiringOrderDate.Year}",
+            number => employee.HiringOrderNumber = number,
+            cancellationToken);
 
         await audit.LogAsync(companyId, AuditModule.HR, AuditAction.Create,
-            $"'{employee.FullName}' işçisi işə qəbul edildi ({employee.Title}, {employee.Department})", cancellationToken);
+            $"'{employee.FullName}' işçisi işə qəbul edildi ({employee.Title}, {employee.Department}); " +
+            $"işçi '{employee.FullName}' üçün işə qəbul əmri formalaşdırıldı (əmr {employee.HiringOrderNumber})", cancellationToken);
 
         return new EmployeeResponseDto(EmployeeDto.From(employee));
     }
@@ -71,7 +84,8 @@ public class EmployeeService(IApplicationDbContext db, IAuditLogger audit) : IEm
     /// </summary>
     public async Task<Result<EmployeeResponseDto>> UpdateAsync(string companyId, string id, UpdateEmployeeRequestDto request, CancellationToken cancellationToken)
     {
-        var profile = ProfileFields.From(request.FullName, request.Title, request.Department, request.HiredAt, request.Salary, request.StoreId);
+        var profile = ProfileFields.From(
+            request.FullName, request.Title, request.Department, request.HiredAt, request.Salary, request.StoreId, request.Fin, request.ProbationMonths);
 
         if (profile.Error is not null)
             return Result<EmployeeResponseDto>.Failure(ErrorType.Validation, profile.Error);
@@ -198,6 +212,35 @@ public class EmployeeService(IApplicationDbContext db, IAuditLogger audit) : IEm
         return new EmployeeResponseDto(EmployeeDto.From(employee));
     }
 
+    /// <summary>The hiring order as of now (profile edits since hiring show up); recorded in the audit log each time.</summary>
+    public async Task<Result<HiringDocumentResponseDto>> GetHiringDocumentAsync(string companyId, string id, CancellationToken cancellationToken)
+    {
+        var document = await db.Employees
+            .AsNoTracking()
+            .Where(e => e.Id == id && e.CompanyId == companyId)
+            .Select(e => new HiringDocumentDto(
+                e.HiringOrderNumber,
+                e.HiringOrderDate,
+                db.Companies.Where(c => c.Id == e.CompanyId).Select(c => c.Name).First(),
+                db.Companies.Where(c => c.Id == e.CompanyId).Select(c => c.Voen).First(),
+                e.FullName,
+                e.Fin,
+                e.Title,
+                e.Department,
+                e.HiredAt,
+                e.ProbationMonths,
+                e.Salary))
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (document is null)
+            return Result<HiringDocumentResponseDto>.Failure(ErrorType.NotFound, EmployeeNotFound);
+
+        await audit.LogAsync(companyId, AuditModule.HR, AuditAction.Create,
+            $"işçi '{document.EmployeeName}' üçün işə qəbul əmri formalaşdırıldı (əmr {document.OrderNumber})", cancellationToken);
+
+        return new HiringDocumentResponseDto(document);
+    }
+
     public async Task<Result<TerminationDocumentResponseDto>> GetTerminationDocumentAsync(string companyId, string id, CancellationToken cancellationToken)
     {
         var document = await db.Employees
@@ -260,13 +303,18 @@ public class EmployeeService(IApplicationDbContext db, IAuditLogger audit) : IEm
         db.Stores.AnyAsync(s => s.Id == storeId && s.CompanyId == companyId && s.IsActive, cancellationToken);
 
     /// <summary>Trimmed, validated profile fields shared by create and update; <c>Error</c> is set when they are not valid.</summary>
-    private sealed record ProfileFields(string FullName, string Title, string Department, DateOnly HiredAt, decimal Salary, string? StoreId, string? Error)
+    private sealed record ProfileFields(
+        string FullName, string Title, string Department, DateOnly HiredAt, decimal Salary, string? StoreId,
+        string? Fin, int? ProbationMonths, string? Error)
     {
-        public static ProfileFields From(string? fullName, string? title, string? department, DateOnly? hiredAt, decimal? salary, string? storeId)
+        public static ProfileFields From(
+            string? fullName, string? title, string? department, DateOnly? hiredAt, decimal? salary, string? storeId,
+            string? fin, int? probationMonths)
         {
             var name = fullName?.Trim() ?? string.Empty;
             var position = title?.Trim() ?? string.Empty;
             var unit = department?.Trim() ?? string.Empty;
+            var finCode = string.IsNullOrWhiteSpace(fin) ? null : fin.Trim().ToUpperInvariant();
 
             var error =
                 name.Length == 0 ? "Ad və soyad tələb olunur."
@@ -278,6 +326,9 @@ public class EmployeeService(IApplicationDbContext db, IAuditLogger audit) : IEm
                 : hiredAt is null ? "İşə qəbul tarixi tələb olunur."
                 : salary is not { } amount || amount <= 0 ? "Maaş 0-dan böyük olmalıdır."
                 : amount > MaxSalary ? "Maaş həddindən artıq böyükdür."
+                : finCode is not null && (finCode.Length != FinLength || !finCode.All(char.IsAsciiLetterOrDigit))
+                    ? $"FİN {FinLength} simvoldan (latın hərfləri və rəqəmlər) ibarət olmalıdır."
+                : probationMonths is < 0 or > MaxProbationMonths ? $"Sınaq müddəti 0–{MaxProbationMonths} ay ola bilər."
                 : null;
 
             return new ProfileFields(
@@ -287,6 +338,8 @@ public class EmployeeService(IApplicationDbContext db, IAuditLogger audit) : IEm
                 hiredAt ?? default,
                 Math.Round(salary ?? 0, 2),
                 string.IsNullOrWhiteSpace(storeId) ? null : storeId.Trim(),
+                finCode,
+                probationMonths is > 0 ? probationMonths : null,
                 error);
         }
 
@@ -298,6 +351,8 @@ public class EmployeeService(IApplicationDbContext db, IAuditLogger audit) : IEm
             employee.HiredAt = HiredAt;
             employee.Salary = Salary;
             employee.StoreId = StoreId;
+            employee.Fin = Fin;
+            employee.ProbationMonths = ProbationMonths;
         }
     }
 }

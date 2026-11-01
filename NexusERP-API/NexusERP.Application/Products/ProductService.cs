@@ -2,12 +2,17 @@ using Microsoft.EntityFrameworkCore;
 using NexusERP.Application.Audit;
 using NexusERP.Application.Common;
 using NexusERP.Application.Common.Interfaces;
+using NexusERP.Application.Integration;
 using NexusERP.Domain.Entities;
 using NexusERP.Domain.Enums;
 
 namespace NexusERP.Application.Products;
 
-public class ProductService(IApplicationDbContext db, IAuditLogger audit) : IProductService
+public class ProductService(
+    IApplicationDbContext db,
+    IAuditLogger audit,
+    IKhazarProductClient khazarProducts,
+    IProductImageFiles imageFiles) : IProductService
 {
     private const string CodePrefix = "MHS";
 
@@ -65,7 +70,7 @@ public class ProductService(IApplicationDbContext db, IAuditLogger audit) : IPro
             : new ProductLookupResponseDto(product);
     }
 
-    public async Task<Result<ProductResponseDto>> CreateAsync(string companyId, CreateProductRequestDto request, CancellationToken cancellationToken)
+    public async Task<Result<ProductResponseDto>> CreateAsync(string companyId, CreateProductRequestDto request, string? imageUrl, CancellationToken cancellationToken)
     {
         var name = request.Name?.Trim();
         var categoryId = request.CategoryId?.Trim();
@@ -131,7 +136,9 @@ public class ProductService(IApplicationDbContext db, IAuditLogger audit) : IPro
             Barcode = barcode,
             // Rounded here so the response matches what decimal(18,2) stores.
             PurchasePrice = Math.Round(purchasePrice, 2),
-            SalePrice = Math.Round(salePrice, 2)
+            SalePrice = Math.Round(salePrice, 2),
+            ImageUrl = imageUrl,
+            ShowOnWebsite = request.ShowOnWebsite
         };
 
         db.Products.Add(product);
@@ -145,7 +152,127 @@ public class ProductService(IApplicationDbContext db, IAuditLogger audit) : IPro
         await audit.LogAsync(companyId, AuditModule.Inventory, AuditAction.Create,
             $"'{product.Code} · {product.Name}' məhsulu əlavə edildi", cancellationToken);
 
-        return ProductResponseDto.From(product, category, unit);
+        // A new product is sent with its photo; a failure is reported, not fatal: the product is saved either way.
+        var storefront = product.ShowOnWebsite
+            ? await PushToStorefrontAsync(companyId, product, category.Name, isPublished: true, sendImage: true, cancellationToken)
+            : StorefrontSyncDto.NotShown;
+
+        return ProductResponseDto.From(product, category, unit, storefront);
+    }
+
+    public async Task<Result<ProductResponseDto>> UpdateAsync(
+        string companyId, string id, UpdateProductRequestDto request, string? newImageUrl, bool removeImage, CancellationToken cancellationToken)
+    {
+        var product = await db.Products.FirstOrDefaultAsync(
+            p => p.Id == id && p.CompanyId == companyId && p.IsActive, cancellationToken);
+
+        if (product is null)
+            return Result<ProductResponseDto>.Failure(ErrorType.NotFound, "Məhsul tapılmadı.");
+
+        var name = request.Name?.Trim();
+        var categoryId = request.CategoryId?.Trim();
+        var unitId = request.UnitId?.Trim();
+
+        if (string.IsNullOrEmpty(name))
+            return Result<ProductResponseDto>.Failure(ErrorType.Validation, "Məhsul adı tələb olunur.");
+
+        if (name.Length > NameMaxLength)
+            return Result<ProductResponseDto>.Failure(ErrorType.Validation, $"Məhsul adı {NameMaxLength} simvoldan uzun ola bilməz.");
+
+        if (string.IsNullOrEmpty(categoryId))
+            return Result<ProductResponseDto>.Failure(ErrorType.Validation, "Kateqoriya seçilməlidir.");
+
+        if (string.IsNullOrEmpty(unitId))
+            return Result<ProductResponseDto>.Failure(ErrorType.Validation, "Ölçü vahidi seçilməlidir.");
+
+        if (request.SalePrice is not { } salePrice)
+            return Result<ProductResponseDto>.Failure(ErrorType.Validation, "Satış qiyməti tələb olunur.");
+
+        var purchasePrice = request.PurchasePrice ?? product.PurchasePrice;
+
+        if (purchasePrice < 0 || salePrice < 0)
+            return Result<ProductResponseDto>.Failure(ErrorType.Validation, "Qiymət mənfi ola bilməz.");
+
+        if (purchasePrice > MaxPrice || salePrice > MaxPrice)
+            return Result<ProductResponseDto>.Failure(ErrorType.Validation, "Qiymət həddindən artıq böyükdür.");
+
+        var category = await db.Categories
+            .FirstOrDefaultAsync(c => c.Id == categoryId && c.CompanyId == companyId, cancellationToken);
+
+        if (category is null)
+            return Result<ProductResponseDto>.Failure(ErrorType.NotFound, "Kateqoriya tapılmadı.");
+
+        var unit = await db.Units
+            .FirstOrDefaultAsync(u => u.Id == unitId && u.CompanyId == companyId, cancellationToken);
+
+        if (unit is null)
+            return Result<ProductResponseDto>.Failure(ErrorType.NotFound, "Ölçü vahidi tapılmadı.");
+
+        var wasShown = product.ShowOnWebsite;
+        var oldImageUrl = product.ImageUrl;
+
+        product.Name = name;
+        product.CategoryId = category.Id;
+        product.UnitId = unit.Id;
+        product.PurchasePrice = Math.Round(purchasePrice, 2);
+        product.SalePrice = Math.Round(salePrice, 2);
+        product.ShowOnWebsite = request.ShowOnWebsite;
+
+        if (newImageUrl is not null)
+            product.ImageUrl = newImageUrl;
+        else if (removeImage)
+            product.ImageUrl = null;
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        // The replaced photo is no longer referenced.
+        if (oldImageUrl is not null && oldImageUrl != product.ImageUrl)
+            imageFiles.TryDelete(oldImageUrl);
+
+        await audit.LogAsync(companyId, AuditModule.Inventory, AuditAction.Update,
+            $"'{product.Code} · {product.Name}' məhsulu dəyişdirildi", cancellationToken);
+
+        // The photo goes along when it is new, or when the product is shown on the store for the first time. A product
+        // that stays shown without a new photo keeps the gallery Khazar already has.
+        var storefront = product.ShowOnWebsite || wasShown
+            ? await PushToStorefrontAsync(
+                companyId, product, category.Name, product.ShowOnWebsite,
+                sendImage: product.ShowOnWebsite && (newImageUrl is not null || !wasShown), cancellationToken)
+            : StorefrontSyncDto.NotShown;
+
+        return ProductResponseDto.From(product, category, unit, storefront);
+    }
+
+    /// <summary>Sends the product to the Khazar store (add/update when shown, hide when not). Never throws.</summary>
+    private async Task<StorefrontSyncDto> PushToStorefrontAsync(
+        string companyId, Product product, string? categoryName, bool isPublished, bool sendImage, CancellationToken cancellationToken)
+    {
+        // The store sells what the warehouses hold: all warehouses together, whole units only.
+        var total = await db.Stocks
+            .Where(s => s.CompanyId == companyId && s.ProductId == product.Id)
+            .SumAsync(s => (decimal?)s.Quantity, cancellationToken) ?? 0m;
+        var stock = (int)Math.Clamp(Math.Floor(total), 0m, int.MaxValue);
+
+        Stream? image = sendImage && product.ImageUrl is not null ? imageFiles.OpenRead(product.ImageUrl) : null;
+
+        try
+        {
+            var result = await khazarProducts.PushProductAsync(
+                new KhazarProductPush(product.Barcode, product.Name, categoryName, product.SalePrice, stock, isPublished),
+                image,
+                image is null ? null : Path.GetFileName(product.ImageUrl),
+                cancellationToken);
+
+            if (!result.Success)
+                return new StorefrontSyncDto("failed", result.Error);
+
+            return new StorefrontSyncDto(isPublished ? "synced" : "hidden");
+        }
+        finally
+        {
+            if (image is not null)
+                await image.DisposeAsync();
+        }
     }
 
     /// <summary>
@@ -182,9 +309,21 @@ public class ProductService(IApplicationDbContext db, IAuditLogger audit) : IPro
                 : $"'{product.Code} · {product.Name}' məhsulu silindi",
             cancellationToken);
 
+        if (isReferenced is false && product.ImageUrl is not null)
+            imageFiles.TryDelete(product.ImageUrl);
+
+        // A product that was on the store must come off it, or customers could still order what no longer exists here.
+        var storefrontWarning = string.Empty;
+        if (product.ShowOnWebsite)
+        {
+            var hidden = await PushToStorefrontAsync(companyId, product, null, isPublished: false, sendImage: false, cancellationToken);
+            if (hidden.Status == "failed")
+                storefrontWarning = $" Diqqət: məhsulu Khazar saytından gizlətmək alınmadı ({hidden.Message}).";
+        }
+
         return isReferenced
-            ? new ProductDeleteResponseDto(true, "Bu məhsula bağlı əməliyyatlar (alış/satış) olduğu üçün silinə bilməz, deaktiv edildi.")
-            : new ProductDeleteResponseDto(false, "Məhsul uğurla silindi.");
+            ? new ProductDeleteResponseDto(true, "Bu məhsula bağlı əməliyyatlar (alış/satış) olduğu üçün silinə bilməz, deaktiv edildi." + storefrontWarning)
+            : new ProductDeleteResponseDto(false, "Məhsul uğurla silindi." + storefrontWarning);
     }
 
     public async Task<Result<GeneratedBarcodeResponseDto>> GenerateBarcodeAsync(string companyId, CancellationToken cancellationToken) =>

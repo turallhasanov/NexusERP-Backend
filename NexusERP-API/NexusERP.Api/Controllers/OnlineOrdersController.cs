@@ -23,4 +23,15 @@ public class OnlineOrdersController(ISaleService saleService) : ApiControllerBas
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Create([FromBody] CreateOnlineOrderRequestDto request, CancellationToken cancellationToken) =>
         ToActionResult(await saleService.CreateOnlineOrderAsync(CurrentCompanyId, request, cancellationToken));
+
+    /// <summary>
+    /// Cancels the online order's sale (status "cancelled") and returns its items to the warehouse stock.
+    /// Repeating the call for an already cancelled order succeeds and leaves stock as it is.
+    /// </summary>
+    [HttpDelete("{externalOrderNumber}")]
+    [ProducesResponseType<SaleResponseDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Cancel(string externalOrderNumber, CancellationToken cancellationToken) =>
+        ToActionResult(await saleService.CancelOnlineOrderAsync(CurrentCompanyId, externalOrderNumber, cancellationToken));
 }

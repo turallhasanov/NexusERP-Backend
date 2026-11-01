@@ -84,7 +84,10 @@ builder.Services
 
 builder.Services.AddAuthorization();
 
-// The React frontend runs on its own origin (Vite dev server); list allowed origins in "Cors:AllowedOrigins".
+// The React frontend runs on its own origin (Vite dev server); list allowed origins in "Cors:AllowedOrigins"
+// (appsettings.Development.json covers localhost and 127.0.0.1, and 5174, where Vite moves when 5173 is taken).
+// A request from any other origin gets no CORS headers; the browser then hides the response and the frontend
+// reports "Serverə qoşulmaq mümkün olmadı", the same as when the API is down.
 const string FrontendCorsPolicy = "Frontend";
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
     ?? ["http://localhost:5173"];
@@ -93,7 +96,14 @@ builder.Services.AddCors(options =>
     options.AddPolicy(FrontendCorsPolicy, policy => policy
         .WithOrigins(allowedOrigins)
         .AllowAnyHeader()
-        .AllowAnyMethod()));
+        .AllowAnyMethod()
+        // Only valid with explicit origins (never AllowAnyOrigin); lets the SignalR negotiate request use credentials.
+        .AllowCredentials()));
+
+// Product photos: one instance is both the writer the controller uses and the reader the application layer uses.
+builder.Services.AddSingleton<NexusERP.Api.Storage.ProductImageStore>();
+builder.Services.AddSingleton<NexusERP.Application.Products.IProductImageFiles>(
+    services => services.GetRequiredService<NexusERP.Api.Storage.ProductImageStore>());
 
 builder.Services
     .AddControllers(options =>
@@ -132,6 +142,8 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
+app.Logger.LogInformation("CORS allowed origins: {Origins}", string.Join(", ", allowedOrigins));
+
 // The seeder below queries Users, so the schema must match the model first (Development applies pending migrations).
 await app.Services.MigrateDatabaseAsync(applyPending: app.Environment.IsDevelopment());
 
@@ -153,6 +165,16 @@ if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
 }
+
+// Product photos at /uploads/products/{file}. File names are unique and never change, so browsers may cache them.
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(
+        app.Services.GetRequiredService<NexusERP.Api.Storage.ProductImageStore>().UploadsRoot),
+    RequestPath = NexusERP.Api.Storage.ProductImageStore.RequestPath,
+    OnPrepareResponse = context =>
+        context.Context.Response.Headers.CacheControl = "public,max-age=2592000,immutable",
+});
 
 app.UseAuthentication();
 app.UseAuthorization();

@@ -245,6 +245,96 @@ public class PurchaseService(IApplicationDbContext db, IStockWriter stockWriter,
         return PurchaseResponseDto.From(approvedPurchase);
     }
 
+    public async Task<Result<PurchaseResponseDto>> CancelAsync(string companyId, string id, bool force, CancellationToken cancellationToken)
+    {
+        var purchase = await db.Purchases
+            .AsNoTracking()
+            .Where(p => p.Id == id && p.CompanyId == companyId)
+            .Select(p => new { p.Id, p.DocumentNumber, p.WarehouseId, p.Status })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (purchase is null)
+            return Result<PurchaseResponseDto>.Failure(ErrorType.NotFound, "Alış sənədi tapılmadı.");
+
+        // A retry after a lost response must not take the stock out twice.
+        if (purchase.Status == PurchaseStatus.Cancelled)
+            return PurchaseResponseDto.From((await FindAsync(companyId, id, cancellationToken))!);
+
+        if (await db.Transactions.AnyAsync(t => t.PurchaseId == id, cancellationToken))
+            return Result<PurchaseResponseDto>.Failure(
+                ErrorType.Conflict,
+                $"'{purchase.DocumentNumber}' alışına kassa ödənişi bağlıdır, ləğv etmək mümkün deyil.");
+
+        // Status change and stock decreases commit together or not at all; disposing without Commit rolls back.
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+
+        // Compare-and-set on the status that was read: if two cancellations race, only one matches a row,
+        // so stock is never taken out twice.
+        var changed = await db.Purchases
+            .Where(p => p.Id == id && p.Status == purchase.Status)
+            .ExecuteUpdateAsync(s => s.SetProperty(p => p.Status, PurchaseStatus.Cancelled), cancellationToken);
+
+        if (changed == 0)
+            return Result<PurchaseResponseDto>.Failure(ErrorType.Conflict, "Sənəd eyni anda dəyişdirildi. Yenidən cəhd edin.");
+
+        // Units the warehouse no longer held when a forced cancellation ran (sold, or cleared by a stock reset).
+        var missing = new List<string>();
+
+        // A draft never added stock, so only an approved purchase has anything to take back.
+        if (purchase.Status == PurchaseStatus.Approved)
+        {
+            var lines = await db.PurchaseItems
+                .Where(i => i.PurchaseId == id)
+                .GroupBy(i => i.ProductId)
+                .Select(g => new { ProductId = g.Key, Quantity = g.Sum(i => i.Quantity) })
+                .ToListAsync(cancellationToken);
+
+            // Same fixed ordinal order as approval, so concurrent documents lock stock rows in one sequence.
+            foreach (var line in lines.OrderBy(l => l.ProductId, StringComparer.Ordinal))
+            {
+                if (await stockWriter.TryDecreaseAsync(companyId, purchase.WarehouseId, line.ProductId, line.Quantity, cancellationToken))
+                    continue;
+
+                var available = await db.Stocks
+                    .Where(s => s.CompanyId == companyId && s.WarehouseId == purchase.WarehouseId && s.ProductId == line.ProductId)
+                    .Select(s => (decimal?)s.Quantity)
+                    .FirstOrDefaultAsync(cancellationToken) ?? 0m;
+
+                var productName = await db.Products
+                    .Where(p => p.Id == line.ProductId)
+                    .Select(p => p.Name)
+                    .FirstAsync(cancellationToken);
+
+                if (!force)
+                    return Result<PurchaseResponseDto>.Failure(
+                        ErrorType.StockShortage,
+                        $"'{purchase.DocumentNumber}' alışını ləğv etmək mümkün deyil: {productName} malının bir hissəsi artıq anbarda yoxdur " +
+                        $"(Qalıq: {FormatQuantity(available)}, Geri götürülməli: {FormatQuantity(line.Quantity)}).");
+
+                // Forced: take what is there, so the balance ends at zero and never goes negative.
+                if (available > 0
+                    && !await stockWriter.TryDecreaseAsync(companyId, purchase.WarehouseId, line.ProductId, available, cancellationToken))
+                    return Result<PurchaseResponseDto>.Failure(ErrorType.Conflict, "Anbar qalığı eyni anda dəyişdirildi. Yenidən cəhd edin.");
+
+                missing.Add($"{productName}: {FormatQuantity(line.Quantity - Math.Max(available, 0m))} ədəd çatmırdı");
+            }
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+
+        var cancelled = (await FindAsync(companyId, id, cancellationToken))!;
+        await audit.LogAsync(companyId, AuditModule.Finance, AuditAction.Update,
+            missing.Count == 0
+                ? $"'{cancelled.DocumentNumber}' alış qaiməsi ləğv edildi, məhsullar anbardan geri götürüldü ({cancelled.TotalAmount:0.00} ₼)"
+                : $"'{cancelled.DocumentNumber}' alış qaiməsi məcburi ləğv edildi ({cancelled.TotalAmount:0.00} ₼); anbarda olmayan miqdar keçildi, qalıq sıfırlandı ({string.Join("; ", missing)})",
+            cancellationToken);
+
+        return PurchaseResponseDto.From(cancelled);
+    }
+
+    private static string FormatQuantity(decimal quantity) =>
+        quantity.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+
     private Task<PurchaseDto?> FindAsync(string companyId, string id, CancellationToken cancellationToken) =>
         db.Purchases
             .AsNoTracking()

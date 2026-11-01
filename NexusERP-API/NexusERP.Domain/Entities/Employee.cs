@@ -10,6 +10,9 @@ public class Employee
 
     public string FullName { get; set; } = string.Empty;
 
+    /// <summary>FİN: the 7-character personal identification code from the ID card. Optional (older records lack it).</summary>
+    public string? Fin { get; set; }
+
     /// <summary>Position (vəzifə).</summary>
     public string Title { get; set; } = string.Empty;
 
@@ -20,6 +23,15 @@ public class Employee
 
     /// <summary>Monthly gross salary.</summary>
     public decimal Salary { get; set; }
+
+    /// <summary>Probation period (sınaq müddəti) in months, at most 3 (Əmək Məcəlləsi, maddə 52). Null: none.</summary>
+    public int? ProbationMonths { get; set; }
+
+    /// <summary>Number of the hiring order (işə qəbul haqqında əmr), per company and year: ƏMR-2026-001, ...</summary>
+    public string HiringOrderNumber { get; set; } = string.Empty;
+
+    /// <summary>Date of the hiring order: the day the employee was added.</summary>
+    public DateOnly HiringOrderDate { get; set; }
 
     /// <summary>Store the employee works in; their salary counts toward its profit. Null for office / company-wide staff.</summary>
     public string? StoreId { get; set; }
