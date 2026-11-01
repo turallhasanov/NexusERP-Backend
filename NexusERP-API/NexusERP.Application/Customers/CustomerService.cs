@@ -1,11 +1,13 @@
 using Microsoft.EntityFrameworkCore;
+using NexusERP.Application.Audit;
 using NexusERP.Application.Common;
 using NexusERP.Application.Common.Interfaces;
 using NexusERP.Domain.Entities;
+using NexusERP.Domain.Enums;
 
 namespace NexusERP.Application.Customers;
 
-public class CustomerService(IApplicationDbContext db) : ICustomerService
+public class CustomerService(IApplicationDbContext db, IAuditLogger audit) : ICustomerService
 {
     internal const string CodePrefix = "KNT";
 
@@ -21,7 +23,7 @@ public class CustomerService(IApplicationDbContext db) : ICustomerService
             .AsNoTracking()
             .Where(c => c.CompanyId == companyId)
             .OrderBy(c => c.Code.Length).ThenBy(c => c.Code)
-            .Select(c => new CustomerDto(c.Id, c.Code, c.Name, c.Voen, c.Phone, c.Address, c.IsActive))
+            .Select(c => new CustomerDto(c.Id, c.Code, c.Name, c.Voen, c.Phone, c.Address, c.IsActive, c.SystemKey != null))
             .ToListAsync(cancellationToken);
 
         return new ItemsResponseDto<CustomerDto>(items);
@@ -60,5 +62,46 @@ public class CustomerService(IApplicationDbContext db) : ICustomerService
             cancellationToken);
 
         return CustomerResponseDto.From(customer);
+    }
+
+    /// <summary>
+    /// A system account is never deleted (400). A counterparty that purchases or sales reference is deactivated instead of
+    /// removed, so those documents keep it: it leaves the lists and cannot be picked for new documents. One nothing
+    /// references is removed.
+    /// </summary>
+    public async Task<Result<CustomerDeleteResponseDto>> DeleteAsync(string companyId, string id, CancellationToken cancellationToken)
+    {
+        var customer = await db.Customers.FirstOrDefaultAsync(
+            c => c.Id == id && c.CompanyId == companyId && c.IsActive, cancellationToken);
+
+        if (customer is null)
+            return Result<CustomerDeleteResponseDto>.Failure(ErrorType.NotFound, "Kontragent tapılmadı.");
+
+        // Accounts the system creates and finds by key (e.g. "khazar-online") are used by integrations; losing one would
+        // break them.
+        if (customer.SystemKey is not null)
+            return Result<CustomerDeleteResponseDto>.Failure(ErrorType.Validation, "Sistem kontragenti silinə bilməz.");
+
+        // Purchases and sales keep restricted foreign keys to the counterparty.
+        var isReferenced =
+            await db.Purchases.AnyAsync(p => p.CustomerId == id, cancellationToken) ||
+            await db.Sales.AnyAsync(s => s.CustomerId == id, cancellationToken);
+
+        if (isReferenced)
+            customer.IsActive = false;
+        else
+            db.Customers.Remove(customer);
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        await audit.LogAsync(companyId, AuditModule.Finance, AuditAction.Delete,
+            isReferenced
+                ? $"'{customer.Code} · {customer.Name}' kontragenti silindi (sənədlərdə istifadə olunduğu üçün deaktiv edildi)"
+                : $"'{customer.Code} · {customer.Name}' kontragenti silindi",
+            cancellationToken);
+
+        return isReferenced
+            ? new CustomerDeleteResponseDto(true, "Bu kontragentə bağlı alış/satış sənədləri olduğu üçün silinmədi, deaktiv edildi: sənədlərdə qalır, siyahıda görünmür.")
+            : new CustomerDeleteResponseDto(false, "Kontragent uğurla silindi.");
     }
 }

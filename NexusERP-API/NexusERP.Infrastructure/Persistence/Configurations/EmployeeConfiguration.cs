@@ -17,6 +17,10 @@ public class EmployeeConfiguration : IEntityTypeConfiguration<Employee>
         builder.Property(e => e.VacationNote).HasMaxLength(500);
         builder.Property(e => e.TerminationReason).HasMaxLength(500);
         builder.Property(e => e.TerminationOrderNumber).HasMaxLength(20);
+        builder.Property(e => e.Fin).HasMaxLength(7);
+        builder.Property(e => e.HiringOrderNumber).IsRequired().HasMaxLength(20);
+
+        builder.HasIndex(e => new { e.CompanyId, e.HiringOrderNumber }).IsUnique();
 
         builder.HasIndex(e => new { e.CompanyId, e.TerminationOrderNumber })
             .IsUnique()

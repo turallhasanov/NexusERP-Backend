@@ -16,7 +16,26 @@ public sealed record CreateProductRequestDto(
     string? Name,
     string? Barcode,
     decimal? PurchasePrice,
-    decimal? SalePrice);
+    decimal? SalePrice,
+    bool ShowOnWebsite = false);
+
+/// <summary>PUT /api/products/{id}. The barcode cannot change: it is the product's SKU in the Khazar store.</summary>
+public sealed record UpdateProductRequestDto(
+    string? CategoryId,
+    string? UnitId,
+    string? Name,
+    decimal? PurchasePrice,
+    decimal? SalePrice,
+    bool ShowOnWebsite);
+
+/// <summary>
+/// Whether the Khazar store got the product: "synced" (added or updated there), "hidden" (taken off the store),
+/// "notShown" (not meant for the store) or "failed" (<c>message</c> says why; the product itself is saved).
+/// </summary>
+public sealed record StorefrontSyncDto(string Status, string? Message = null)
+{
+    public static readonly StorefrontSyncDto NotShown = new("notShown");
+}
 
 public sealed record ProductDto(
     string Id,
@@ -29,7 +48,9 @@ public sealed record ProductDto(
     string CategoryId,
     CategoryDto Category,
     string UnitId,
-    UnitDto Unit)
+    UnitDto Unit,
+    string? ImageUrl,
+    bool ShowOnWebsite)
 {
     /// <summary>Server-side projection shared by the list and barcode lookups.</summary>
     public static readonly Expression<Func<Product, ProductDto>> Projection = p => new ProductDto(
@@ -43,7 +64,9 @@ public sealed record ProductDto(
         p.CategoryId,
         new CategoryDto(p.Category!.Id, p.Category.Code, p.Category.Name),
         p.UnitId,
-        new UnitDto(p.Unit!.Id, p.Unit.Name, p.Unit.ShortName));
+        new UnitDto(p.Unit!.Id, p.Unit.Name, p.Unit.ShortName),
+        p.ImageUrl,
+        p.ShowOnWebsite);
 }
 
 /// <summary>
@@ -67,9 +90,12 @@ public sealed record ProductResponseDto(
     string CategoryId,
     CategoryDto Category,
     string UnitId,
-    UnitDto Unit) : SuccessResponse
+    UnitDto Unit,
+    string? ImageUrl,
+    bool ShowOnWebsite,
+    StorefrontSyncDto Storefront) : SuccessResponse
 {
-    public static ProductResponseDto From(Product product, Category category, Unit unit) =>
+    public static ProductResponseDto From(Product product, Category category, Unit unit, StorefrontSyncDto storefront) =>
         new(
             product.Id,
             product.Code,
@@ -81,7 +107,10 @@ public sealed record ProductResponseDto(
             product.CategoryId,
             new CategoryDto(category.Id, category.Code, category.Name),
             product.UnitId,
-            new UnitDto(unit.Id, unit.Name, unit.ShortName));
+            new UnitDto(unit.Id, unit.Name, unit.ShortName),
+            product.ImageUrl,
+            product.ShowOnWebsite,
+            storefront);
 }
 
 /// <summary>

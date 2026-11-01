@@ -14,7 +14,10 @@ public enum ErrorType
     TooManyRequests,
 
     /// <summary>A dependency is down (e.g. the mail server); the request can be retried later.</summary>
-    ServiceUnavailable
+    ServiceUnavailable,
+
+    /// <summary>The request is valid but the stock it needs is no longer there (e.g. cancelling a purchase whose goods were sold).</summary>
+    StockShortage
 }
 
 /// <summary>Outcome of an application service call: either a response body or an Azerbaijani error message.</summary>

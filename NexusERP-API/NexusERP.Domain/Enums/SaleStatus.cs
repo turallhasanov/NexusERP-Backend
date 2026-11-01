@@ -6,5 +6,8 @@ public enum SaleStatus
     Draft = 1,
 
     /// <summary>Goods sold; stock has been decreased.</summary>
-    Approved = 2
+    Approved = 2,
+
+    /// <summary>An online order the store cancelled; its stock has been returned. Excluded from every report.</summary>
+    Cancelled = 3
 }

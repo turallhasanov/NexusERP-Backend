@@ -270,6 +270,10 @@ namespace NexusERP.Infrastructure.Persistence.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<string>("Fin")
+                        .HasMaxLength(7)
+                        .HasColumnType("nvarchar(7)");
+
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -278,7 +282,18 @@ namespace NexusERP.Infrastructure.Persistence.Migrations
                     b.Property<DateOnly>("HiredAt")
                         .HasColumnType("date");
 
+                    b.Property<DateOnly>("HiringOrderDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("HiringOrderNumber")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<int?>("LeaveType")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ProbationMonths")
                         .HasColumnType("int");
 
                     b.Property<decimal>("Salary")
@@ -320,6 +335,9 @@ namespace NexusERP.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("StoreId");
+
+                    b.HasIndex("CompanyId", "HiringOrderNumber")
+                        .IsUnique();
 
                     b.HasIndex("CompanyId", "TerminationOrderNumber")
                         .IsUnique()
@@ -460,6 +478,10 @@ namespace NexusERP.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<string>("ImageUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
@@ -475,6 +497,9 @@ namespace NexusERP.Infrastructure.Persistence.Migrations
                     b.Property<decimal>("SalePrice")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<bool>("ShowOnWebsite")
+                        .HasColumnType("bit");
 
                     b.Property<string>("UnitId")
                         .IsRequired()
