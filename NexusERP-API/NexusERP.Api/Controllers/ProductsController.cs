@@ -42,7 +42,7 @@ public class ProductsController(IProductService productService, ProductImageStor
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> CreateWithImage([FromForm] ProductForm form, CancellationToken cancellationToken)
+    public async Task<IActionResult> Create([FromForm] ProductForm form, CancellationToken cancellationToken)
     {
         var upload = await SaveImageAsync(form.Image, cancellationToken);
         if (upload.Error is not null)
@@ -59,11 +59,11 @@ public class ProductsController(IProductService productService, ProductImageStor
         return ToActionResult(result);
     }
 
-    /// <summary>The same as <see cref="CreateWithImage"/> with a JSON body and no photo; used by other systems (Khazar).</summary>
+    /// <summary>The same as <see cref="Create"/> with a JSON body and no photo; used by other systems (Khazar).</summary>
     [HttpPost]
     [Consumes("application/json")]
     [ApiExplorerSettings(IgnoreApi = true)]
-    public async Task<IActionResult> Create([FromBody] CreateProductRequestDto request, CancellationToken cancellationToken) =>
+    public async Task<IActionResult> CreateFromJson([FromBody] CreateProductRequestDto request, CancellationToken cancellationToken) =>
         ToActionResult(await productService.CreateAsync(CurrentCompanyId, request, imageUrl: null, cancellationToken));
 
     /// <summary>

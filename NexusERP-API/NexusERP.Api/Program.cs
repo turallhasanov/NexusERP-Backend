@@ -121,6 +121,11 @@ builder.Services
         options.InvalidModelStateResponseFactory = _ =>
             new BadRequestObjectResult(new ErrorResponse("Sorğu formatı yanlışdır."));
     });
+// Unhandled exceptions become a logged ProblemDetails 500 (see GlobalExceptionHandler). Only exceptions are affected:
+// Result failures keep { ok: false, error }, and body-less 401/403/404 responses stay as they are (no UseStatusCodePages).
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<NexusERP.Api.ExceptionHandling.GlobalExceptionHandler>();
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -131,6 +136,11 @@ builder.Services.AddSwaggerGen(options =>
         api.ActionDescriptor is ControllerActionDescriptor action
             ? $"{action.ControllerName}_{TrimAsyncSuffix(action.ActionName)}"
             : null);
+
+    // The /// <summary> of each action is its summary in Swagger UI (see GenerateDocumentationFile in the csproj).
+    var xmlDocs = Path.Combine(AppContext.BaseDirectory, $"{typeof(Program).Assembly.GetName().Name}.xml");
+    if (File.Exists(xmlDocs))
+        options.IncludeXmlComments(xmlDocs);
 
     // api/company is a legacy alias of api/companies kept for existing clients; documenting both
     // would emit every company operation twice with the same operation id.
@@ -151,10 +161,16 @@ await app.Services.MigrateDatabaseAsync(applyPending: app.Environment.IsDevelopm
 await app.Services.SeedSuperAdminAsync();
 
 // Configure the HTTP request pipeline.
+
+// Outermost, so it catches exceptions from everything below (CORS, auth, controllers). CORS headers still reach the
+// 500, since the CORS middleware adds them when the response starts, so the browser can read the error body.
+app.UseExceptionHandler();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    // Shows each operation id (Products_GetAll, Sales_Delete, ...) next to its route.
+    app.UseSwaggerUI(options => options.DisplayOperationId());
 }
 
 // Before HTTPS redirection and auth, so preflight (OPTIONS) requests are answered rather than redirected or rejected.
