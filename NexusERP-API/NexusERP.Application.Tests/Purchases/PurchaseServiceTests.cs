@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using NexusERP.Application.Audit;
 using NexusERP.Application.Common;
 using NexusERP.Application.Common.Interfaces;
+using NexusERP.Application.Integration;
 using NexusERP.Application.Purchases;
 using NexusERP.Application.Tests.TestSupport;
 using NexusERP.Domain.Entities;
@@ -19,10 +20,11 @@ public sealed class PurchaseServiceTests : IDisposable
     private readonly SqliteTestDatabase _database = new();
     private readonly Mock<IStockWriter> _stock = new(MockBehavior.Strict);
     private readonly Mock<IAuditLogger> _audit = new();
+    private readonly Mock<IStorefrontStockSync> _storefront = new();
 
     public void Dispose() => _database.Dispose();
 
-    private PurchaseService CreateService(AppDbContext db) => new(db, _stock.Object, _audit.Object);
+    private PurchaseService CreateService(AppDbContext db) => new(db, _stock.Object, _audit.Object, _storefront.Object);
 
     private sealed record Seeded(SeededCompany Company, Customer Supplier, Product Coat, Product Scarf);
 
@@ -192,6 +194,21 @@ public sealed class PurchaseServiceTests : IDisposable
         await using var check = _database.CreateContext();
         (await check.Products.SingleAsync(p => p.Id == s.Coat.Id)).PurchasePrice.Should().Be(22m);
         (await check.Products.SingleAsync(p => p.Id == s.Scarf.Id)).PurchasePrice.Should().Be(5m);
+    }
+
+    [Fact]
+    public async Task ApproveAsync_sends_the_approved_products_to_the_storefront_after_commit()
+    {
+        await using var db = _database.CreateContext();
+        var s = await SeedAsync(db);
+        var purchase = await TestData.PurchaseAsync(db, s.Company, s.Supplier.Id, PurchaseStatus.Draft, "ALS-001", (s.Coat.Id, 2m, 20m));
+        _stock.Setup(w => w.IncreaseAsync(s.Company.CompanyId, s.Company.WarehouseId, s.Coat.Id, 2m, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+
+        var result = await CreateService(db).ApproveAsync(s.Company.CompanyId, purchase.Id, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        _storefront.Verify(f => f.SyncAsync(s.Company.CompanyId,
+            It.Is<IReadOnlyCollection<string>>(ids => ids.SequenceEqual(new[] { s.Coat.Id })), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

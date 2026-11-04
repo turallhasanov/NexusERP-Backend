@@ -2,12 +2,14 @@ using Microsoft.EntityFrameworkCore;
 using NexusERP.Application.Audit;
 using NexusERP.Application.Common;
 using NexusERP.Application.Common.Interfaces;
+using NexusERP.Application.Integration;
 using NexusERP.Domain.Entities;
 using NexusERP.Domain.Enums;
 
 namespace NexusERP.Application.Purchases;
 
-public class PurchaseService(IApplicationDbContext db, IStockWriter stockWriter, IAuditLogger audit) : IPurchaseService
+public class PurchaseService(
+    IApplicationDbContext db, IStockWriter stockWriter, IAuditLogger audit, IStorefrontStockSync storefrontSync) : IPurchaseService
 {
     private const string NumberPrefix = "ALS";
 
@@ -238,6 +240,9 @@ public class PurchaseService(IApplicationDbContext db, IStockWriter stockWriter,
 
         await transaction.CommitAsync(cancellationToken);
 
+        // After the commit: a Khazar failure is logged inside and cannot undo the approval.
+        await storefrontSync.SyncAsync(companyId, increments.Select(i => i.ProductId).ToList(), cancellationToken);
+
         var approvedPurchase = (await FindAsync(companyId, id, cancellationToken))!;
         await audit.LogAsync(companyId, AuditModule.Finance, AuditAction.Update,
             $"'{approvedPurchase.DocumentNumber}' alış qaiməsi təsdiqləndi ({approvedPurchase.TotalAmount:0.00} ₼)", cancellationToken);
@@ -279,6 +284,7 @@ public class PurchaseService(IApplicationDbContext db, IStockWriter stockWriter,
 
         // Units the warehouse no longer held when a forced cancellation ran (sold, or cleared by a stock reset).
         var missing = new List<string>();
+        var touchedProductIds = new List<string>();
 
         // A draft never added stock, so only an approved purchase has anything to take back.
         if (purchase.Status == PurchaseStatus.Approved)
@@ -288,6 +294,8 @@ public class PurchaseService(IApplicationDbContext db, IStockWriter stockWriter,
                 .GroupBy(i => i.ProductId)
                 .Select(g => new { ProductId = g.Key, Quantity = g.Sum(i => i.Quantity) })
                 .ToListAsync(cancellationToken);
+
+            touchedProductIds.AddRange(lines.Select(l => l.ProductId));
 
             // Same fixed ordinal order as approval, so concurrent documents lock stock rows in one sequence.
             foreach (var line in lines.OrderBy(l => l.ProductId, StringComparer.Ordinal))
@@ -321,6 +329,8 @@ public class PurchaseService(IApplicationDbContext db, IStockWriter stockWriter,
         }
 
         await transaction.CommitAsync(cancellationToken);
+
+        await storefrontSync.SyncAsync(companyId, touchedProductIds, cancellationToken);
 
         var cancelled = (await FindAsync(companyId, id, cancellationToken))!;
         await audit.LogAsync(companyId, AuditModule.Finance, AuditAction.Update,

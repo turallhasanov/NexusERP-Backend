@@ -15,4 +15,15 @@ public class InventoryController(IInventoryService inventoryService) : ApiContro
     [ProducesResponseType<ItemsResponseDto<StockDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetStocks(CancellationToken cancellationToken) =>
         ToActionResult(await inventoryService.GetStocksAsync(CurrentCompanyId, cancellationToken));
+
+    /// <summary>
+    /// Manual stock receipt: adds the quantity to the product's balance in the warehouse. When the product is shown on
+    /// the Khazar store, its new total is sent there (a failed push is logged and does not undo the receipt).
+    /// </summary>
+    [HttpPost("receive")]
+    [ProducesResponseType<ReceiveStockResponseDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ReceiveStock([FromBody] ReceiveStockRequestDto request, CancellationToken cancellationToken) =>
+        ToActionResult(await inventoryService.ReceiveStockAsync(CurrentCompanyId, request, cancellationToken));
 }

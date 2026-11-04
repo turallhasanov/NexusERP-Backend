@@ -4,6 +4,7 @@ using NexusERP.Application.Audit;
 using NexusERP.Application.Common;
 using NexusERP.Application.Common.Interfaces;
 using NexusERP.Application.Customers;
+using NexusERP.Application.Integration;
 using NexusERP.Application.Purchases;
 using NexusERP.Application.Tests.TestSupport;
 using NexusERP.Domain.Enums;
@@ -165,7 +166,7 @@ public sealed class CustomerServiceTests : IDisposable
         await TestData.PurchaseAsync(db, company, customer.Id, PurchaseStatus.Draft, "ALS-001", (product.Id, 1m, 5m));
         await CreateService(db).DeleteAsync(company.CompanyId, customer.Id, CancellationToken.None);
 
-        var purchases = new PurchaseService(db, Mock.Of<IStockWriter>(), _audit.Object);
+        var purchases = new PurchaseService(db, Mock.Of<IStockWriter>(), _audit.Object, Mock.Of<IStorefrontStockSync>());
         var result = await purchases.CreateAsync(company.CompanyId,
             new CreatePurchaseRequestDto(company.WarehouseId, customer.Id, null, [new PurchaseItemRequestDto(product.Id, 1m, 5m)]),
             CancellationToken.None);
