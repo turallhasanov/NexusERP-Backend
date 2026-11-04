@@ -42,6 +42,11 @@ public sealed class NexusErpApiFactory : WebApplicationFactory<CustomersControll
         Environment.SetEnvironmentVariable("ConnectionStrings__DefaultConnection", "DataSource=:memory:");
         Environment.SetEnvironmentVariable("JwtSettings__Secret", "integration-tests-only-signing-key-0123456789");
         Environment.SetEnvironmentVariable("Cors__AllowedOrigins__0", AllowedOrigin);
+
+        // Serilog's file sink (WriteTo index 1 in appsettings.json) writes to a temp folder, not NexusERP.Api/logs;
+        // shared, since several test hosts log at once.
+        Environment.SetEnvironmentVariable("Serilog__WriteTo__1__Args__path", Path.Combine(Path.GetTempPath(), "nexuserp-tests", "logs", "nexus-.txt"));
+        Environment.SetEnvironmentVariable("Serilog__WriteTo__1__Args__shared", "true");
     }
 
     public NexusErpApiFactory() => _connection.Open();
