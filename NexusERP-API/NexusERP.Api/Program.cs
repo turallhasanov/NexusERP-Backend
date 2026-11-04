@@ -5,12 +5,14 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApplicationModels;
 using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using NexusERP.Api.Logging;
 using NexusERP.Api.Middlewares;
 using NexusERP.Api.Routing;
 using NexusERP.Application;
 using NexusERP.Application.Common;
+using NexusERP.Application.Common.Interfaces;
 using NexusERP.Application.SystemInfo;
 using NexusERP.Infrastructure;
 using NexusERP.Infrastructure.Authentication;
@@ -51,6 +53,9 @@ try
     var jwtSettings = builder.Configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>()
         ?? throw new InvalidOperationException($"'{JwtSettings.SectionName}' section is not configured.");
 
+    // Set on the request when the token's user is deactivated, so the 401 can say why.
+    const string AccountDisabledItem = "AccountDisabled";
+
     builder.Services
         .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddJwtBearer(options =>
@@ -84,11 +89,30 @@ try
 
                     return Task.CompletedTask;
                 },
+                // A valid token is not enough: a user deactivated after it was issued is refused at once.
+                OnTokenValidated = async context =>
+                {
+                    var userId = context.Principal?.FindFirst(AppClaimTypes.UserId)?.Value;
+
+                    if (string.IsNullOrEmpty(userId))
+                        return;
+
+                    var db = context.HttpContext.RequestServices.GetRequiredService<IApplicationDbContext>();
+                    var disabled = await db.Users.AsNoTracking()
+                        .AnyAsync(u => u.Id == userId && !u.IsActive, context.HttpContext.RequestAborted);
+
+                    if (disabled)
+                    {
+                        context.HttpContext.Items[AccountDisabledItem] = true;
+                        context.Fail("Account is deactivated.");
+                    }
+                },
                 OnChallenge = async context =>
                 {
                     context.HandleResponse();
                     context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                    await context.Response.WriteAsJsonAsync(new ErrorResponse("Giriş tələb olunur."));
+                    await context.Response.WriteAsJsonAsync(new ErrorResponse(
+                        context.HttpContext.Items.ContainsKey(AccountDisabledItem) ? "Hesabınız deaktiv edilib." : "Giriş tələb olunur."));
                 },
                 OnForbidden = async context =>
                 {

@@ -42,5 +42,8 @@ public sealed record CompanyUserDto(
 /// <summary>Body of PUT /api/companies/users/{id}/role: { "role": "admin" | "itadmin" | "staff" }.</summary>
 public sealed record UpdateCompanyUserRoleRequestDto(string? Role);
 
+/// <summary>Body of PATCH /api/users/{id}/status: { "isActive": true | false }.</summary>
+public sealed record SetUserStatusRequestDto(bool? IsActive);
+
 /// <summary>PUT /api/companies/users/{id}/role → { "ok": true, "user": { ... } }</summary>
 public sealed record CompanyUserResponseDto(CompanyUserDto User) : SuccessResponse;

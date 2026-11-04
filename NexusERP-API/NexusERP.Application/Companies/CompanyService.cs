@@ -203,6 +203,34 @@ public class CompanyService(IApplicationDbContext db, IJwtTokenGenerator jwtToke
         return new CompanyUserResponseDto(CompanyUserDto.From(user, customRoleName));
     }
 
+    public async Task<Result<CompanyUserResponseDto>> SetUserActiveAsync(
+        string currentUserId, string companyId, string userId, SetUserStatusRequestDto request, CancellationToken cancellationToken)
+    {
+        if (request.IsActive is not { } isActive)
+            return Result<CompanyUserResponseDto>.Failure(ErrorType.Validation, "Status (isActive) true və ya false olmalıdır.");
+
+        // The caller is an active manager, so the company always keeps one: nobody can lock themselves out.
+        if (userId == currentUserId)
+            return Result<CompanyUserResponseDto>.Failure(ErrorType.Forbidden, "Öz hesabınızı deaktiv edə bilməzsiniz.");
+
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId && u.CompanyId == companyId, cancellationToken);
+
+        if (user is null)
+            return Result<CompanyUserResponseDto>.Failure(ErrorType.NotFound, "İstifadəçi tapılmadı.");
+
+        if (user.IsActive != isActive)
+        {
+            user.IsActive = isActive;
+            await db.SaveChangesAsync(cancellationToken);
+        }
+
+        var customRoleName = user.CustomRoleId is null
+            ? null
+            : await db.CustomRoles.Where(r => r.Id == user.CustomRoleId).Select(r => r.Name).FirstOrDefaultAsync(cancellationToken);
+
+        return new CompanyUserResponseDto(CompanyUserDto.From(user, customRoleName));
+    }
+
     public Task<CompanyStatus?> GetStatusAsync(string companyId, CancellationToken cancellationToken) =>
         db.Companies
             .AsNoTracking()
