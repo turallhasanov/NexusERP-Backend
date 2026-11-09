@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using NexusERP.Api.Middlewares;
 using NexusERP.Application.Auth;
 using NexusERP.Application.Common;
 
@@ -65,6 +66,7 @@ public class AuthController(IAuthService authService) : ApiControllerBase
 
     [HttpGet("me")]
     [Authorize]
+    [AllowUnapproved]
     [ProducesResponseType<CurrentUserResponseDto>(StatusCodes.Status200OK)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]

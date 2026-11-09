@@ -18,9 +18,9 @@ public sealed record EmailRequestDto(string? Email);
 /// <summary>Body of POST /api/auth/reset-password.</summary>
 public sealed record ResetPasswordRequestDto(string? Email, string? Code, string? NewPassword);
 
-public sealed record UserDto(string Id, string Name, string Email, string Role, string? CompanyId)
+public sealed record UserDto(string Id, string Name, string Email, string Role, string? CompanyId, bool IsApproved, IReadOnlyList<string>? Permissions = null)
 {
-    public static UserDto From(User user) => new(user.Id, user.Name, user.Email, user.Role, user.CompanyId);
+    public static UserDto From(User user) => new(user.Id, user.Name, user.Email, user.Role, user.CompanyId, user.IsApproved);
 }
 
 /// <summary>Login and e-mail verification: { "ok": true, "token": "...", "user": { ... } }</summary>

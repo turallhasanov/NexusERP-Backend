@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using NexusERP.Application.Audit;
 using NexusERP.Application.Common;
 using NexusERP.Application.Common.Interfaces;
@@ -7,7 +8,7 @@ using NexusERP.Domain.Enums;
 
 namespace NexusERP.Application.Customers;
 
-public class CustomerService(IApplicationDbContext db, IAuditLogger audit) : ICustomerService
+public class CustomerService(IApplicationDbContext db, IAuditLogger audit, ILogger<CustomerService> logger) : ICustomerService
 {
     internal const string CodePrefix = "KNT";
 
@@ -75,7 +76,19 @@ public class CustomerService(IApplicationDbContext db, IAuditLogger audit) : ICu
             c => c.Id == id && c.CompanyId == companyId && c.IsActive, cancellationToken);
 
         if (customer is null)
+        {
+            // Says why the lookup missed: no such id, another company's row, or one already deactivated.
+            var existing = await db.Customers.AsNoTracking()
+                .Where(c => c.Id == id)
+                .Select(c => new { c.CompanyId, c.IsActive })
+                .FirstOrDefaultAsync(cancellationToken);
+
+            logger.LogWarning(
+                "Counterparty delete missed: id {CustomerId}, company {CompanyId}. Row exists: {Exists}, row company: {RowCompanyId}, active: {IsActive}",
+                id, companyId, existing is not null, existing?.CompanyId, existing?.IsActive);
+
             return Result<CustomerDeleteResponseDto>.Failure(ErrorType.NotFound, "Kontragent tapılmadı.");
+        }
 
         // Accounts the system creates and finds by key (e.g. "khazar-online") are used by integrations; losing one would
         // break them.

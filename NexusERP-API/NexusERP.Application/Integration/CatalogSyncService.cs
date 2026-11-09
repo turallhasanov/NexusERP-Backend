@@ -33,6 +33,10 @@ public class CatalogSyncService(
 
     public async Task<Result<CatalogSyncResponseDto>> SyncAllAsync(string companyId, CancellationToken cancellationToken)
     {
+        // The Khazar catalog belongs to the company connected to it; others must not import it as their own products.
+        if (!await StorefrontAccess.IsEnabledAsync(db, companyId, cancellationToken))
+            return Result<CatalogSyncResponseDto>.Failure(ErrorType.Validation, StorefrontAccess.NotConnectedMessage);
+
         var catalog = await khazar.GetCatalogAsync(cancellationToken);
 
         if (catalog.Items is not { } items)

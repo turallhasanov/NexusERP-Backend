@@ -103,7 +103,8 @@ public class PlatformAdminService(
             Email = adminEmail!,
             PasswordHash = passwordHasher.Hash(request.AdminPassword!),
             Role = adminRole,
-            IsEmailConfirmed = true
+            IsEmailConfirmed = true,
+            IsApproved = true
         };
 
         // One SaveChanges: the company and its admin are inserted together or not at all.
@@ -159,7 +160,8 @@ public class PlatformAdminService(
             Email = email!,
             PasswordHash = passwordHasher.Hash(request.Password!),
             Role = role!,
-            IsEmailConfirmed = true
+            IsEmailConfirmed = true,
+            IsApproved = true
         };
 
         db.Users.Add(user);
@@ -198,6 +200,30 @@ public class PlatformAdminService(
         {
             logger.LogInformation("Platform admin changed company {CompanyId} status from {From} to {To}", company.Id, company.Status, status);
             company.Status = status;
+            await db.SaveChangesAsync(cancellationToken);
+        }
+
+        var userCount = await db.Users.CountAsync(u => u.CompanyId == tenantId, cancellationToken);
+
+        return new TenantResponseDto(new TenantDto(company.Id, company.Name, company.Voen, company.CreatedAt, company.Status, userCount, company.InviteCode));
+    }
+
+    public async Task<Result<TenantResponseDto>> UpdateStorefrontAsync(string tenantId, UpdateTenantStorefrontRequestDto request, CancellationToken cancellationToken)
+    {
+        var storefrontName = string.IsNullOrWhiteSpace(request.StorefrontName) ? null : request.StorefrontName.Trim();
+
+        if (storefrontName?.Length > 100)
+            return Result<TenantResponseDto>.Failure(ErrorType.Validation, "Vitrin adı 100 simvoldan uzun ola bilməz.");
+
+        var company = await db.Companies.FindAsync([tenantId], cancellationToken);
+
+        if (company is null || company.Status == CompanyStatus.Deleted)
+            return Result<TenantResponseDto>.Failure(ErrorType.NotFound, TenantNotFound);
+
+        if (company.StorefrontName != storefrontName)
+        {
+            logger.LogInformation("Platform admin set company {CompanyId} storefront to {Storefront}", company.Id, storefrontName ?? "(none)");
+            company.StorefrontName = storefrontName;
             await db.SaveChangesAsync(cancellationToken);
         }
 

@@ -25,7 +25,7 @@ public class AuditLogsController(IAuditLogService auditLogService) : ApiControll
     [HttpGet]
     [ProducesResponseType<AuditLogPageResponseDto>(StatusCodes.Status200OK)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> Get(
+    public async Task<IActionResult> GetAll(
         [FromQuery] string? department,
         [FromQuery] AuditModule? moduleName,
         [FromQuery] AuditAction? actionType,

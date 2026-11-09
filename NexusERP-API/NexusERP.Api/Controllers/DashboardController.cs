@@ -6,7 +6,8 @@ using NexusERP.Application.Dashboard;
 
 namespace NexusERP.Api.Controllers;
 
-[Authorize, RequireCompany]
+// Company managers, and staff whose custom role lists this module; everyone else gets 403.
+[Authorize, RequireCompany, RequireModule("dashboard")]
 [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized)]
 [ProducesResponseType<ErrorResponse>(StatusCodes.Status403Forbidden)]
 public class DashboardController(IDashboardService dashboardService) : ApiControllerBase
