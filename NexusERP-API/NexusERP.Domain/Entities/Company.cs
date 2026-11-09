@@ -18,5 +18,11 @@ public class Company
     /// <summary>Only an active company's users can sign in and use company endpoints.</summary>
     public CompanyStatus Status { get; set; } = CompanyStatus.Active;
 
+    /// <summary>
+    /// Name of the e-commerce storefront this company is connected to (e.g. "Khazar"); null when it has none. Only a
+    /// connected company's products are sent to the storefront, and its UI offers the "show on storefront" option.
+    /// </summary>
+    public string? StorefrontName { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

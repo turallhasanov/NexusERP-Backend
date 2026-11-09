@@ -70,7 +70,9 @@ public class CompanyService(IApplicationDbContext db, IJwtTokenGenerator jwtToke
             .Where(u => u.Id == userId && u.CompanyId == null)
             .ExecuteUpdateAsync(s => s
                 .SetProperty(u => u.CompanyId, company.Id)
-                .SetProperty(u => u.Role, FounderRole), cancellationToken);
+                .SetProperty(u => u.Role, FounderRole)
+                // The founder owns the company, so there is nobody who could approve them.
+                .SetProperty(u => u.IsApproved, true), cancellationToken);
 
         if (assigned == 0)
             return Result<CompanyResponseDto>.Failure(ErrorType.Conflict, AlreadyInCompany);
@@ -80,6 +82,7 @@ public class CompanyService(IApplicationDbContext db, IJwtTokenGenerator jwtToke
         // Mirror the stored values for the new token; nothing is saved through the tracked entity.
         user.CompanyId = company.Id;
         user.Role = FounderRole;
+        user.IsApproved = true;
 
         return ToResponse(company, user);
     }
@@ -141,7 +144,8 @@ public class CompanyService(IApplicationDbContext db, IJwtTokenGenerator jwtToke
                 c.Name,
                 c.Voen,
                 c.InviteCode,
-                db.Users.Count(u => u.CompanyId == c.Id)))
+                db.Users.Count(u => u.CompanyId == c.Id),
+                c.StorefrontName))
             .FirstOrDefaultAsync(cancellationToken);
 
         return company is null
@@ -163,7 +167,8 @@ public class CompanyService(IApplicationDbContext db, IJwtTokenGenerator jwtToke
                 u.CustomRoleId,
                 db.CustomRoles.Where(r => r.Id == u.CustomRoleId).Select(r => r.Name).FirstOrDefault(),
                 u.IsActive,
-                u.CreatedAt))
+                u.CreatedAt,
+                u.IsApproved))
             .ToListAsync(cancellationToken);
 
         return new ItemsResponseDto<CompanyUserDto>(users);
@@ -231,6 +236,30 @@ public class CompanyService(IApplicationDbContext db, IJwtTokenGenerator jwtToke
         return new CompanyUserResponseDto(CompanyUserDto.From(user, customRoleName));
     }
 
+    public async Task<Result<CompanyUserResponseDto>> ApproveUserAsync(
+        string companyId, string userId, ApproveUserRequestDto request, CancellationToken cancellationToken)
+    {
+        var role = request.Role?.Trim().ToLowerInvariant();
+
+        if (string.IsNullOrEmpty(role) || !AppRoles.CompanyRoles.Contains(role))
+            return Result<CompanyUserResponseDto>.Failure(ErrorType.Validation, "Rol \"admin\", \"itadmin\" və ya \"staff\" olmalıdır.");
+
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId && u.CompanyId == companyId, cancellationToken);
+
+        if (user is null)
+            return Result<CompanyUserResponseDto>.Failure(ErrorType.NotFound, "İstifadəçi tapılmadı.");
+
+        user.IsApproved = true;
+        user.Role = role;
+        await db.SaveChangesAsync(cancellationToken);
+
+        var customRoleName = user.CustomRoleId is null
+            ? null
+            : await db.CustomRoles.Where(r => r.Id == user.CustomRoleId).Select(r => r.Name).FirstOrDefaultAsync(cancellationToken);
+
+        return new CompanyUserResponseDto(CompanyUserDto.From(user, customRoleName));
+    }
+
     public Task<CompanyStatus?> GetStatusAsync(string companyId, CancellationToken cancellationToken) =>
         db.Companies
             .AsNoTracking()
@@ -266,5 +295,5 @@ public class CompanyService(IApplicationDbContext db, IJwtTokenGenerator jwtToke
     }
 
     private CompanyResponseDto ToResponse(Company company, User user) =>
-        new(company.Id, company.Name, company.Voen, company.InviteCode, user.Role, jwtTokenGenerator.GenerateToken(user));
+        new(company.Id, company.Name, company.Voen, company.InviteCode, user.Role, jwtTokenGenerator.GenerateToken(user), user.IsApproved);
 }

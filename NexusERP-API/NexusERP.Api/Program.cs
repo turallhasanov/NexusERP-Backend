@@ -98,14 +98,21 @@ try
                         return;
 
                     var db = context.HttpContext.RequestServices.GetRequiredService<IApplicationDbContext>();
-                    var disabled = await db.Users.AsNoTracking()
-                        .AnyAsync(u => u.Id == userId && !u.IsActive, context.HttpContext.RequestAborted);
+                    var state = await db.Users.AsNoTracking()
+                        .Where(u => u.Id == userId)
+                        .Select(u => new { u.IsActive, u.IsApproved, u.Role })
+                        .FirstOrDefaultAsync(context.HttpContext.RequestAborted);
 
-                    if (disabled)
+                    if (state is { IsActive: false })
                     {
                         context.HttpContext.Items[AccountDisabledItem] = true;
                         context.Fail("Account is deactivated.");
+                        return;
                     }
+
+                    // Not approved yet: RequireApprovedFilter answers 403 on every action not marked AllowUnapproved.
+                    if (state is { IsApproved: false, Role: not AppRoles.SuperAdmin })
+                        context.HttpContext.Items[RequireApprovedFilter.UnapprovedItem] = true;
                 },
                 OnChallenge = async context =>
                 {
@@ -151,6 +158,8 @@ try
             options.Conventions.Add(new RouteTokenTransformerConvention(new KebabCaseParameterTransformer()));
             // Platform administrators viewing a company (impersonation tokens) may read but never write.
             options.Filters.Add<ImpersonationReadOnlyFilter>();
+            // Users still waiting for approval reach nothing but sign-in state and the company create/join step.
+            options.Filters.Add<RequireApprovedFilter>();
         })
         // Enums go over the wire as camelCase names ("draft", "approved") rather than numbers.
         .AddJsonOptions(options =>

@@ -229,4 +229,51 @@ public sealed class ProductServiceTests : IDisposable
         await using var check = _database.CreateContext();
         (await check.Products.SingleAsync()).ShowOnWebsite.Should().BeTrue();
     }
+
+    // ---- Multi-tenant isolation: only a company connected to the storefront sends products to it ----
+
+    [Fact]
+    public async Task CreateAsync_does_not_send_to_the_storefront_for_a_company_without_a_connection()
+    {
+        await using var db = _database.CreateContext();
+        var company = await TestData.CompanyAsync(db, "Başqa MMC", storefrontName: null);
+
+        var result = await CreateService(db).CreateAsync(company.CompanyId, NewProduct(company, "BBB", showOnWebsite: true), null, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Storefront.Should().Be(StorefrontSyncDto.NotShown);
+        _khazar.Verify(k => k.PushProductAsync(It.IsAny<KhazarProductPush>(), It.IsAny<Stream?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
+        await using var check = _database.CreateContext();
+        (await check.Products.SingleAsync()).ShowOnWebsite.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task UpdateAsync_cannot_turn_the_storefront_on_for_a_company_without_a_connection()
+    {
+        await using var db = _database.CreateContext();
+        var company = await TestData.CompanyAsync(db, "Başqa MMC", storefrontName: null);
+        var product = await TestData.ProductAsync(db, company, "MHS-001", "BBB", "2000000000011");
+
+        var result = await CreateService(db).UpdateAsync(
+            company.CompanyId, product.Id,
+            new UpdateProductRequestDto(company.CategoryId, company.UnitId, "BBB", 10m, 20m, ShowOnWebsite: true),
+            null, false, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        _khazar.Verify(k => k.PushProductAsync(It.IsAny<KhazarProductPush>(), It.IsAny<Stream?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
+        await using var check = _database.CreateContext();
+        (await check.Products.SingleAsync()).ShowOnWebsite.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task CreateAsync_sends_to_the_storefront_for_a_connected_company()
+    {
+        await using var db = _database.CreateContext();
+        var company = await TestData.CompanyAsync(db);
+
+        var result = await CreateService(db).CreateAsync(company.CompanyId, NewProduct(company, "BBB", showOnWebsite: true), null, CancellationToken.None);
+
+        result.Value!.Storefront.Status.Should().Be("synced");
+        _khazar.Verify(k => k.PushProductAsync(It.IsAny<KhazarProductPush>(), It.IsAny<Stream?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
 }

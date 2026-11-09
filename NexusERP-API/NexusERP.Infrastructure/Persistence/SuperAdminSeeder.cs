@@ -68,6 +68,7 @@ public static class SuperAdminSeeder
             user.Role = AppRoles.SuperAdmin;
             user.IsActive = true;
             user.IsEmailConfirmed = true;
+            user.IsApproved = true;
             await db.SaveChangesAsync(cancellationToken);
             logger.LogInformation("Account {Email} is now the platform administrator", email);
             return;
@@ -84,7 +85,8 @@ public static class SuperAdminSeeder
             Email = email,
             PasswordHash = provider.GetRequiredService<IPasswordHasher>().Hash(settings.Password),
             Role = AppRoles.SuperAdmin,
-            IsEmailConfirmed = true
+            IsEmailConfirmed = true,
+            IsApproved = true
         });
 
         await db.SaveChangesAsync(cancellationToken);

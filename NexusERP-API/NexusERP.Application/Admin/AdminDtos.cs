@@ -16,6 +16,9 @@ public sealed record CreateTenantRequestDto(
 /// <summary>Body of PUT /api/admin/tenants/{id}/status: { "status": "active" | "passive" | "suspended" }.</summary>
 public sealed record UpdateTenantStatusRequestDto(CompanyStatus? Status);
 
+/// <summary>Connects the company to an e-commerce storefront by name (e.g. "Khazar"); null or blank disconnects it.</summary>
+public sealed record UpdateTenantStorefrontRequestDto(string? StorefrontName);
+
 /// <summary>One row of the tenant list, with the invite code its staff join with.</summary>
 public sealed record TenantDto(string Id, string Name, string? Voen, DateTime CreatedAt, CompanyStatus Status, int UserCount, string InviteCode);
 

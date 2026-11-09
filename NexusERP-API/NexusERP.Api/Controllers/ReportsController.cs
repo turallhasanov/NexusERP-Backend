@@ -6,7 +6,8 @@ using NexusERP.Application.Reports;
 
 namespace NexusERP.Api.Controllers;
 
-[Authorize, RequireCompany]
+// Company managers, and staff whose custom role lists this module; everyone else gets 403.
+[Authorize, RequireCompany, RequireModule("reports")]
 [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized)]
 [ProducesResponseType<ErrorResponse>(StatusCodes.Status403Forbidden)]
 public class ReportsController(IReportService reportService) : ApiControllerBase

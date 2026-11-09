@@ -148,4 +148,20 @@ public sealed class CatalogSyncServiceTests : IDisposable
         result.ErrorType.Should().Be(ErrorType.ServiceUnavailable);
         result.Error.Should().Be("Khazar əlçatan deyil");
     }
+
+    [Fact]
+    public async Task A_company_without_a_storefront_connection_cannot_import_the_catalog()
+    {
+        await using var db = _database.CreateContext();
+        var company = await TestData.CompanyAsync(db, "Başqa MMC", storefrontName: null);
+        Catalog(Item("khz-coat-01", "Yun palto", "M", "Qara"));
+
+        var result = await CreateService(db).SyncAllAsync(company.CompanyId, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorType.Should().Be(ErrorType.Validation);
+        _khazar.Verify(k => k.GetCatalogAsync(It.IsAny<CancellationToken>()), Times.Never);
+        await using var check = _database.CreateContext();
+        (await check.Products.CountAsync()).Should().Be(0);
+    }
 }

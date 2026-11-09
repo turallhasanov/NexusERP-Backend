@@ -10,9 +10,9 @@ public sealed record SeededCompany(string CompanyId, string WarehouseId, string 
 /// <summary>Rows that satisfy the real schema's foreign keys and unique indexes.</summary>
 public static class TestData
 {
-    public static async Task<SeededCompany> CompanyAsync(AppDbContext db, string name = "Test MMC")
+    public static async Task<SeededCompany> CompanyAsync(AppDbContext db, string name = "Test MMC", string? storefrontName = "Khazar")
     {
-        var company = new Company { Name = name, InviteCode = Guid.NewGuid().ToString("N")[..8].ToUpperInvariant() };
+        var company = new Company { Name = name, StorefrontName = storefrontName, InviteCode = Guid.NewGuid().ToString("N")[..8].ToUpperInvariant() };
         var warehouse = new Warehouse { CompanyId = company.Id, Code = "ANB-001", Name = "Mərkəzi anbar" };
         var category = new Category { CompanyId = company.Id, Code = "KAT-001", Name = "Paltar" };
         var unit = new Unit { CompanyId = company.Id, Name = "Ədəd", ShortName = "əd." };

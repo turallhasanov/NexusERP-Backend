@@ -33,6 +33,17 @@ public class UsersController(IRoleService roleService, ICompanyService companySe
     public async Task<IActionResult> SetStatus(string userId, [FromBody] SetUserStatusRequestDto request, CancellationToken cancellationToken) =>
         ToActionResult(await companyService.SetUserActiveAsync(CurrentUserId, CurrentCompanyId, userId, request, cancellationToken));
 
+    /// <summary>
+    /// Approves a user who joined with an invite code and gives them a role ({ "role": "staff" }). Until approved the
+    /// user can sign in but every data request is answered 403.
+    /// </summary>
+    [HttpPost("{userId}/approve")]
+    [ProducesResponseType<CompanyUserResponseDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Approve(string userId, [FromBody] ApproveUserRequestDto request, CancellationToken cancellationToken) =>
+        ToActionResult(await companyService.ApproveUserAsync(CurrentCompanyId, userId, request, cancellationToken));
+
     /// <summary>Gives the user one of the company's custom roles ({ "roleId": null } takes it away).</summary>
     [HttpPost("{userId}/assign-role")]
     [ProducesResponseType<CompanyUserResponseDto>(StatusCodes.Status200OK)]

@@ -45,8 +45,8 @@ public sealed class NexusErpApiFactory : WebApplicationFactory<CustomersControll
 
         // Serilog's file sink (WriteTo index 1 in appsettings.json) writes to a temp folder, not NexusERP.Api/logs;
         // shared, since several test hosts log at once.
-        Environment.SetEnvironmentVariable("Serilog__WriteTo__1__Args__path", Path.Combine(Path.GetTempPath(), "nexuserp-tests", "logs", "nexus-.txt"));
-        Environment.SetEnvironmentVariable("Serilog__WriteTo__1__Args__shared", "true");
+        Environment.SetEnvironmentVariable("Serilog__WriteTo__1__Args__configure__0__Args__path", Path.Combine(Path.GetTempPath(), "nexuserp-tests", "logs", "nexus-.txt"));
+        Environment.SetEnvironmentVariable("Serilog__WriteTo__1__Args__configure__0__Args__shared", "true");
     }
 
     public NexusErpApiFactory() => _connection.Open();
@@ -160,7 +160,7 @@ public sealed record TestTenant(
 {
     public static async Task<TestTenant> SeedAsync(AppDbContext db, IPasswordHasher hasher, IJwtTokenGenerator tokens)
     {
-        var company = new Company { Name = "Khazar MMC", InviteCode = "TESTCODE" };
+        var company = new Company { Name = "Khazar MMC", InviteCode = "TESTCODE", StorefrontName = "Khazar" };
         var warehouse = new Warehouse { CompanyId = company.Id, Code = "ANB-001", Name = "Mərkəzi anbar" };
         var store = new Store { CompanyId = company.Id, WarehouseId = warehouse.Id, Code = "MAG-001", Name = "Online mağaza" };
         var category = new Category { CompanyId = company.Id, Code = "KAT-001", Name = "Palto" };
@@ -168,7 +168,7 @@ public sealed record TestTenant(
 
         User NewUser(string name, string email, string role, string? companyId) => new()
         {
-            CompanyId = companyId, Name = name, Email = email, Role = role, IsEmailConfirmed = true,
+            CompanyId = companyId, Name = name, Email = email, Role = role, IsEmailConfirmed = true, IsApproved = true,
             PasswordHash = hasher.Hash(NexusErpApiFactory.KhazarPassword)
         };
 

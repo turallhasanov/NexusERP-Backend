@@ -70,7 +70,8 @@ public class ProductService(
             : new ProductLookupResponseDto(product);
     }
 
-    public async Task<Result<ProductResponseDto>> CreateAsync(string companyId, CreateProductRequestDto request, string? imageUrl, CancellationToken cancellationToken)
+    public async Task<Result<ProductResponseDto>> CreateAsync(string companyId, CreateProductRequestDto request, string? imageUrl, CancellationToken cancellationToken,
+        IReadOnlyList<string>? galleryImageUrls = null)
     {
         var name = request.Name?.Trim();
         var categoryId = request.CategoryId?.Trim();
@@ -80,6 +81,8 @@ public class ProductService(
         if (string.IsNullOrEmpty(name))
             return Result<ProductResponseDto>.Failure(ErrorType.Validation, "Məhsul adı tələb olunur.");
 
+        name = VariantName.Normalize(name);
+
         if (name.Length > NameMaxLength)
             return Result<ProductResponseDto>.Failure(ErrorType.Validation, $"Məhsul adı {NameMaxLength} simvoldan uzun ola bilməz.");
 
@@ -88,6 +91,9 @@ public class ProductService(
 
         if (string.IsNullOrEmpty(unitId))
             return Result<ProductResponseDto>.Failure(ErrorType.Validation, "Ölçü vahidi seçilməlidir.");
+
+        if (await NameExistsAsync(companyId, name, exceptId: null, cancellationToken))
+            return Result<ProductResponseDto>.Failure(ErrorType.Conflict, DuplicateNameMessage(name));
 
         if (barcode?.Length > BarcodeMaxLength)
             return Result<ProductResponseDto>.Failure(ErrorType.Validation, $"Barkod {BarcodeMaxLength} simvoldan uzun ola bilməz.");
@@ -138,7 +144,8 @@ public class ProductService(
             PurchasePrice = Math.Round(purchasePrice, 2),
             SalePrice = Math.Round(salePrice, 2),
             ImageUrl = imageUrl,
-            ShowOnWebsite = request.ShowOnWebsite
+            // Only a company connected to the storefront can show products on it.
+            ShowOnWebsite = request.ShowOnWebsite && await StorefrontAccess.IsEnabledAsync(db, companyId, cancellationToken)
         };
 
         db.Products.Add(product);
@@ -154,14 +161,16 @@ public class ProductService(
 
         // A new product is sent with its photo; a failure is reported, not fatal: the product is saved either way.
         var storefront = product.ShowOnWebsite
-            ? await PushToStorefrontAsync(companyId, product, category.Name, isPublished: true, sendImage: true, cancellationToken)
+            ? await PushToStorefrontAsync(
+                companyId, product, category.Name, isPublished: true, sendImage: true, cancellationToken, galleryImageUrls)
             : StorefrontSyncDto.NotShown;
 
         return ProductResponseDto.From(product, category, unit, storefront);
     }
 
     public async Task<Result<ProductResponseDto>> UpdateAsync(
-        string companyId, string id, UpdateProductRequestDto request, string? newImageUrl, bool removeImage, CancellationToken cancellationToken)
+        string companyId, string id, UpdateProductRequestDto request, string? newImageUrl, bool removeImage, CancellationToken cancellationToken,
+        IReadOnlyList<string>? galleryImageUrls = null)
     {
         var product = await db.Products.FirstOrDefaultAsync(
             p => p.Id == id && p.CompanyId == companyId && p.IsActive, cancellationToken);
@@ -176,6 +185,8 @@ public class ProductService(
         if (string.IsNullOrEmpty(name))
             return Result<ProductResponseDto>.Failure(ErrorType.Validation, "Məhsul adı tələb olunur.");
 
+        name = VariantName.Normalize(name);
+
         if (name.Length > NameMaxLength)
             return Result<ProductResponseDto>.Failure(ErrorType.Validation, $"Məhsul adı {NameMaxLength} simvoldan uzun ola bilməz.");
 
@@ -184,6 +195,11 @@ public class ProductService(
 
         if (string.IsNullOrEmpty(unitId))
             return Result<ProductResponseDto>.Failure(ErrorType.Validation, "Ölçü vahidi seçilməlidir.");
+
+        // Only a rename is checked, so a product that already shares its name with another can still be edited.
+        if (!string.Equals(name, product.Name, StringComparison.Ordinal)
+            && await NameExistsAsync(companyId, name, product.Id, cancellationToken))
+            return Result<ProductResponseDto>.Failure(ErrorType.Conflict, DuplicateNameMessage(name));
 
         if (request.SalePrice is not { } salePrice)
             return Result<ProductResponseDto>.Failure(ErrorType.Validation, "Satış qiyməti tələb olunur.");
@@ -216,7 +232,8 @@ public class ProductService(
         product.UnitId = unit.Id;
         product.PurchasePrice = Math.Round(purchasePrice, 2);
         product.SalePrice = Math.Round(salePrice, 2);
-        product.ShowOnWebsite = request.ShowOnWebsite;
+        // Turning it off is always allowed; turning it on needs a storefront connection.
+        product.ShowOnWebsite = request.ShowOnWebsite && await StorefrontAccess.IsEnabledAsync(db, companyId, cancellationToken);
 
         if (newImageUrl is not null)
             product.ImageUrl = newImageUrl;
@@ -237,16 +254,45 @@ public class ProductService(
         var storefront = product.ShowOnWebsite || wasShown
             ? await PushToStorefrontAsync(
                 companyId, product, category.Name, product.ShowOnWebsite,
-                sendImage: product.ShowOnWebsite && (newImageUrl is not null || !wasShown), cancellationToken)
+                sendImage: product.ShowOnWebsite && (newImageUrl is not null || !wasShown), cancellationToken,
+                product.ShowOnWebsite ? galleryImageUrls : null)
             : StorefrontSyncDto.NotShown;
 
         return ProductResponseDto.From(product, category, unit, storefront);
     }
 
+    // Extra photos are read into memory for the one request that sends them; a file that is gone is skipped.
+    private async Task<List<KhazarGalleryImage>?> ReadGalleryAsync(IReadOnlyList<string>? urls, CancellationToken cancellationToken)
+    {
+        if (urls is not { Count: > 0 })
+            return null;
+
+        var gallery = new List<KhazarGalleryImage>();
+
+        foreach (var url in urls)
+        {
+            await using var stream = imageFiles.OpenRead(url);
+
+            if (stream is null)
+                continue;
+
+            using var buffer = new MemoryStream();
+            await stream.CopyToAsync(buffer, cancellationToken);
+            gallery.Add(new KhazarGalleryImage(Path.GetFileName(url), buffer.ToArray()));
+        }
+
+        return gallery;
+    }
+
     /// <summary>Sends the product to the Khazar store (add/update when shown, hide when not). Never throws.</summary>
     private async Task<StorefrontSyncDto> PushToStorefrontAsync(
-        string companyId, Product product, string? categoryName, bool isPublished, bool sendImage, CancellationToken cancellationToken)
+        string companyId, Product product, string? categoryName, bool isPublished, bool sendImage, CancellationToken cancellationToken,
+        IReadOnlyList<string>? galleryImageUrls = null)
     {
+        // The storefront is shared by all companies: another company's products never go there.
+        if (!await StorefrontAccess.IsEnabledAsync(db, companyId, cancellationToken))
+            return StorefrontSyncDto.NotShown;
+
         // The store sells what the warehouses hold: all warehouses together, whole units only.
         var total = await db.Stocks
             .Where(s => s.CompanyId == companyId && s.ProductId == product.Id)
@@ -254,11 +300,15 @@ public class ProductService(
         var stock = (int)Math.Clamp(Math.Floor(total), 0m, int.MaxValue);
 
         Stream? image = sendImage && product.ImageUrl is not null ? imageFiles.OpenRead(product.ImageUrl) : null;
+        var gallery = await ReadGalleryAsync(galleryImageUrls, cancellationToken);
 
         try
         {
             var result = await khazarProducts.PushProductAsync(
-                new KhazarProductPush(product.Barcode, product.Name, categoryName, product.SalePrice, stock, isPublished),
+                new KhazarProductPush(product.Barcode, product.Name, categoryName, product.SalePrice, stock, isPublished)
+                {
+                    Gallery = gallery,
+                },
                 image,
                 image is null ? null : Path.GetFileName(product.ImageUrl),
                 cancellationToken);
@@ -328,6 +378,14 @@ public class ProductService(
 
     public async Task<Result<GeneratedBarcodeResponseDto>> GenerateBarcodeAsync(string companyId, CancellationToken cancellationToken) =>
         new GeneratedBarcodeResponseDto(await GenerateUniqueBarcodeAsync(companyId, cancellationToken));
+
+    // Two live products with one name would reach the store as the same variant of the same product.
+    private Task<bool> NameExistsAsync(string companyId, string name, string? exceptId, CancellationToken cancellationToken) =>
+        db.Products.AnyAsync(
+            p => p.CompanyId == companyId && p.IsActive && p.Name == name && p.Id != exceptId, cancellationToken);
+
+    private static string DuplicateNameMessage(string name) =>
+        $"'{name}' adlı məhsul artıq var. Yeni ölçü üçün adı \"Ad (Ölçü)\" formatında yazın, məsələn \"Usaq Hoodie (L)\".";
 
     private Task<bool> BarcodeExistsAsync(string companyId, string barcode, CancellationToken cancellationToken) =>
         db.Products.AnyAsync(p => p.CompanyId == companyId && p.Barcode == barcode, cancellationToken);

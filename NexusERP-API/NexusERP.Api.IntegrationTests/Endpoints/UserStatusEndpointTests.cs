@@ -24,7 +24,7 @@ public sealed class UserStatusEndpointTests(NexusErpApiFactory factory) : IClass
         var user = new User
         {
             CompanyId = Tenant.CompanyId, Name = "İşçi " + Guid.NewGuid().ToString("N")[..6],
-            Email = $"staff-{Guid.NewGuid():N}@test.az".ToLowerInvariant(), Role = "staff", IsEmailConfirmed = true,
+            Email = $"staff-{Guid.NewGuid():N}@test.az".ToLowerInvariant(), Role = "staff", IsEmailConfirmed = true, IsApproved = true,
             PasswordHash = hasher.Hash(NexusErpApiFactory.KhazarPassword)
         };
         db.Users.Add(user);

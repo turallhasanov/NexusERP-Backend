@@ -158,6 +158,10 @@ namespace NexusERP.Infrastructure.Persistence.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
+                    b.Property<string>("StorefrontName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<string>("Voen")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
@@ -984,6 +988,9 @@ namespace NexusERP.Infrastructure.Persistence.Migrations
                         .HasColumnType("nvarchar(150)");
 
                     b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsApproved")
                         .HasColumnType("bit");
 
                     b.Property<bool>("IsEmailConfirmed")

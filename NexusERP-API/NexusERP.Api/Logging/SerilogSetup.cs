@@ -22,14 +22,24 @@ public static class SerilogSetup
     }
 
     /// <summary>
-    /// Serilog resolves a relative file path ("logs/nexus-.txt") against the process's working directory, which is the
+    /// Serilog resolves a relative file path ("Logs/log-.txt") against the process's working directory, which is the
     /// project folder under Visual Studio but the solution folder for <c>dotnet run --project</c>. Anchoring it to the
-    /// content root keeps the logs in NexusERP.Api/logs however the API is started. Absolute paths are left alone.
+    /// content root keeps the logs in NexusERP.Api/Logs however the API is started. Absolute paths are left alone.
     /// </summary>
-    private static void AnchorFilePaths(IConfiguration configuration, string contentRoot)
+    private static void AnchorFilePaths(IConfiguration configuration, string contentRoot) =>
+        AnchorSinks(configuration.GetSection("Serilog:WriteTo"), contentRoot);
+
+    // The file sink sits inside the Async wrapper ("Args:configure"), so the search follows wrappers down.
+    private static void AnchorSinks(IConfigurationSection sinks, string contentRoot)
     {
-        foreach (var sink in configuration.GetSection("Serilog:WriteTo").GetChildren())
+        foreach (var sink in sinks.GetChildren())
         {
+            if (string.Equals(sink["Name"], "Async", StringComparison.OrdinalIgnoreCase))
+            {
+                AnchorSinks(sink.GetSection("Args:configure"), contentRoot);
+                continue;
+            }
+
             if (!string.Equals(sink["Name"], "File", StringComparison.OrdinalIgnoreCase))
                 continue;
 

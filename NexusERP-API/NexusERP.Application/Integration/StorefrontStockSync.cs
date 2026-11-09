@@ -27,6 +27,9 @@ public sealed class StorefrontStockSync(
 
         try
         {
+            if (!await StorefrontAccess.IsEnabledAsync(db, companyId, cancellationToken))
+                return;
+
             var products = await db.Products
                 .AsNoTracking()
                 .Where(p => p.CompanyId == companyId && p.IsActive && p.ShowOnWebsite && productIds.Contains(p.Id))

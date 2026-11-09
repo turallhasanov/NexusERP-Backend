@@ -69,4 +69,18 @@ public sealed class StorefrontStockSyncTests : IDisposable
         await act.Should().NotThrowAsync();
         _khazar.Verify(k => k.PushProductAsync(It.IsAny<KhazarProductPush>(), null, null, It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
+
+    [Fact]
+    public async Task Sends_nothing_for_a_company_without_a_storefront_connection()
+    {
+        await using var db = _database.CreateContext();
+        var company = await TestData.CompanyAsync(db, "Başqa MMC", storefrontName: null);
+        var product = await TestData.ProductAsync(db, company, "MHS-001", "Palto", "2000000000011", showOnWebsite: true);
+        await TestData.StockAsync(db, company, product.Id, 5m);
+
+        await new StorefrontStockSync(db, _khazar.Object, NullLogger<StorefrontStockSync>.Instance)
+            .SyncAsync(company.CompanyId, [product.Id], CancellationToken.None);
+
+        _pushes.Should().BeEmpty();
+    }
 }

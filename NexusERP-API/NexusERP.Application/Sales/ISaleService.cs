@@ -4,7 +4,12 @@ namespace NexusERP.Application.Sales;
 
 public interface ISaleService
 {
-    Task<Result<ItemsResponseDto<SaleSummaryDto>>> GetAllAsync(string companyId, CancellationToken cancellationToken);
+    /// <summary>
+    /// The company's sales. <paramref name="customerId"/> keeps one counterparty's sales; <paramref name="search"/> keeps the
+    /// sales whose customer name, code or phone (counterparty or online shopper) or document number contains the text.
+    /// </summary>
+    Task<Result<ItemsResponseDto<SaleSummaryDto>>> GetAllAsync(
+        string companyId, string? customerId, string? search, CancellationToken cancellationToken);
     Task<Result<SaleLookupResponseDto>> GetByIdAsync(string companyId, string id, CancellationToken cancellationToken);
     Task<Result<SaleResponseDto>> CreateAsync(string companyId, CreateSaleRequestDto request, CancellationToken cancellationToken);
     Task<Result<SaleResponseDto>> ApproveAsync(string companyId, string id, CancellationToken cancellationToken);
