@@ -45,6 +45,13 @@ public sealed class KhazarProductClient(HttpClient httpClient, IOptions<KhazarSe
                 form.Add(file, "image", imageFileName ?? "image");
             }
 
+            foreach (var extra in product.Gallery ?? [])
+            {
+                var extraFile = new ByteArrayContent(extra.Content);
+                extraFile.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+                form.Add(extraFile, "galleryImages", extra.FileName);
+            }
+
             using var request = new HttpRequestMessage(HttpMethod.Post, ProductsEndpoint) { Content = form };
             request.Headers.Add("X-Api-Key", settings.ApiKey);
 
@@ -52,9 +59,15 @@ public sealed class KhazarProductClient(HttpClient httpClient, IOptions<KhazarSe
 
             if (response.IsSuccessStatusCode)
             {
-                logger.LogInformation("Product {Sku} was sent to Khazar ({Published}).", product.Sku, product.IsPublished ? "shown" : "hidden");
+                logger.LogInformation(
+                    "Product {Sku} was sent to Khazar ({Published}), stock {Stock}: HTTP {StatusCode}.",
+                    product.Sku, product.IsPublished ? "shown" : "hidden", product.Stock, (int)response.StatusCode);
                 return KhazarProductResult.Ok;
             }
+
+            logger.LogWarning(
+                "Khazar answered HTTP {StatusCode} for product {Sku} (stock {Stock}).",
+                (int)response.StatusCode, product.Sku, product.Stock);
 
             return response.StatusCode switch
             {

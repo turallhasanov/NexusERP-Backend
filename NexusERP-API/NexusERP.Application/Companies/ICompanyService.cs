@@ -10,8 +10,22 @@ public interface ICompanyService
     Task<Result<CompanyResponseDto>> JoinAsync(string userId, JoinCompanyRequestDto request, CancellationToken cancellationToken);
     Task<Result<MyCompanyResponseDto>> GetMyCompanyAsync(string companyId, CancellationToken cancellationToken);
     Task<Result<ItemsResponseDto<CompanyUserDto>>> GetUsersAsync(string companyId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Deactivates or reactivates a user of the company. A deactivated user cannot sign in, and the token they already
+    /// hold is refused on its next request.
+    /// </summary>
+    Task<Result<CompanyUserResponseDto>> SetUserActiveAsync(
+        string currentUserId, string companyId, string userId, SetUserStatusRequestDto request, CancellationToken cancellationToken);
     Task<Result<CompanyUserResponseDto>> UpdateUserRoleAsync(
         string currentUserId, string companyId, string userId, UpdateCompanyUserRoleRequestDto request, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Approves a user who joined the company with an invite code and gives them a role. Until then every request of
+    /// theirs except the sign-in/company ones is answered 403.
+    /// </summary>
+    Task<Result<CompanyUserResponseDto>> ApproveUserAsync(
+        string companyId, string userId, ApproveUserRequestDto request, CancellationToken cancellationToken);
 
     /// <summary>The company's status, or null when it does not exist.</summary>
     Task<CompanyStatus?> GetStatusAsync(string companyId, CancellationToken cancellationToken);

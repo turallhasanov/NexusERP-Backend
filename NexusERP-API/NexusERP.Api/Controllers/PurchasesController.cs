@@ -30,7 +30,7 @@ public class PurchasesController(IPurchaseService purchaseService) : ApiControll
         ToActionResult(await purchaseService.CreateAsync(CurrentCompanyId, request, cancellationToken));
 
     /// <summary>
-    /// Cancels a purchase (status "cancelled") and takes the quantities it added back out of the warehouse stock. Refused
+    /// Deletes a purchase by cancelling it (status "cancelled"; the document is kept) and takes the quantities it added back out of the warehouse stock. Refused
     /// with 422 when part of that stock is already gone, and with 409 when a cash payment is linked to the purchase.
     /// <c>?force=true</c> cancels it anyway: each balance drops by what is there and ends at zero, never below.
     /// Company admins and IT admins only.
@@ -44,7 +44,7 @@ public class PurchasesController(IPurchaseService purchaseService) : ApiControll
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status409Conflict)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status422UnprocessableEntity)]
-    public async Task<IActionResult> Cancel(string id, [FromQuery] bool force, CancellationToken cancellationToken) =>
+    public async Task<IActionResult> Delete(string id, [FromQuery] bool force, CancellationToken cancellationToken) =>
         ToActionResult(await purchaseService.CancelAsync(CurrentCompanyId, id, force, cancellationToken));
 
     [HttpPost("{id}/approve")]

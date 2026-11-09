@@ -29,4 +29,11 @@ public class User
     /// <summary>Set by entering the code e-mailed at registration (or completing a password reset).
     /// Unconfirmed users cannot log in.</summary>
     public bool IsEmailConfirmed { get; set; }
+
+    /// <summary>
+    /// False for a fresh sign-up. Founders of a company, platform admins, seeded and platform-created accounts are
+    /// approved at once; someone who joins an existing company with an invite code stays unapproved (no access to
+    /// its data) until a company manager approves them and gives them a role.
+    /// </summary>
+    public bool IsApproved { get; set; }
 }

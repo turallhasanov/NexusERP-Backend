@@ -12,13 +12,15 @@ public interface IProductService
     /// When <see cref="CreateProductRequestDto.ShowOnWebsite"/> is set the product is also sent to the Khazar store; if that
     /// fails the product is still saved and the response says so in <c>storefront</c>.
     /// </summary>
-    Task<Result<ProductResponseDto>> CreateAsync(string companyId, CreateProductRequestDto request, string? imageUrl, CancellationToken cancellationToken);
+    Task<Result<ProductResponseDto>> CreateAsync(string companyId, CreateProductRequestDto request, string? imageUrl, CancellationToken cancellationToken,
+        IReadOnlyList<string>? galleryImageUrls = null);
 
     /// <summary>
     /// Changes a product. <paramref name="newImageUrl"/> replaces its photo; <paramref name="removeImage"/> drops it. The
     /// Khazar store is updated when the product is, or just was, shown there.
     /// </summary>
     Task<Result<ProductResponseDto>> UpdateAsync(
-        string companyId, string id, UpdateProductRequestDto request, string? newImageUrl, bool removeImage, CancellationToken cancellationToken);
+        string companyId, string id, UpdateProductRequestDto request, string? newImageUrl, bool removeImage, CancellationToken cancellationToken,
+        IReadOnlyList<string>? galleryImageUrls = null);
     Task<Result<ProductDeleteResponseDto>> DeleteAsync(string companyId, string id, CancellationToken cancellationToken);
 }

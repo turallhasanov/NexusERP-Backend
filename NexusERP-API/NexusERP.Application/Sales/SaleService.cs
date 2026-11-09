@@ -12,7 +12,8 @@ using NexusERP.Domain.Enums;
 namespace NexusERP.Application.Sales;
 
 public class SaleService(
-    IApplicationDbContext db, IStockWriter stockWriter, IAuditLogger audit, IKhazarOrderClient khazarOrders) : ISaleService
+    IApplicationDbContext db, IStockWriter stockWriter, IAuditLogger audit, IKhazarOrderClient khazarOrders,
+    IStorefrontStockSync storefrontSync) : ISaleService
 {
     private const string NumberPrefix = "STŞ";
 
@@ -29,11 +30,36 @@ public class SaleService(
     private const int RetailEmailMaxLength = 200;
     private const int RetailAddressMaxLength = 500;
 
-    public async Task<Result<ItemsResponseDto<SaleSummaryDto>>> GetAllAsync(string companyId, CancellationToken cancellationToken)
+    public async Task<Result<ItemsResponseDto<SaleSummaryDto>>> GetAllAsync(
+        string companyId, string? customerId, string? search, CancellationToken cancellationToken)
     {
-        var items = await db.Sales
+        var query = db.Sales
             .AsNoTracking()
-            .Where(s => s.CompanyId == companyId)
+            .Where(s => s.CompanyId == companyId);
+
+        var customerFilter = customerId?.Trim();
+        if (!string.IsNullOrEmpty(customerFilter))
+            query = query.Where(s => s.CustomerId == customerFilter);
+
+        // Case follows the column collation (insensitive by default), as in the product search.
+        var text = search?.Trim();
+        if (!string.IsNullOrEmpty(text))
+        {
+            // A phone typed the local way ("050 123 45 67", "(50) 123-45-67") must find "+994501234567".
+            // Phones match only through this key (3+ digits), so a stray "7" does not list every number containing a 7.
+            var phoneKey = PhoneSearchKey(text);
+            var matchPhone = phoneKey is not null;
+            var phoneText = phoneKey ?? string.Empty;
+
+            query = query.Where(s =>
+                s.DocumentNumber.Contains(text)
+                || (s.Customer != null && (s.Customer.Name.Contains(text) || s.Customer.Code.Contains(text)
+                                           || (matchPhone && s.Customer.Phone != null && s.Customer.Phone.Contains(phoneText))))
+                || (s.RetailCustomerName != null && s.RetailCustomerName.Contains(text))
+                || (matchPhone && s.RetailCustomerPhone != null && s.RetailCustomerPhone.Contains(phoneText)));
+        }
+
+        var items = await query
             .OrderByDescending(s => s.DocumentDate)
             .ThenByDescending(s => s.DocumentNumber.Length).ThenByDescending(s => s.DocumentNumber)
             .Select(s => new SaleSummaryDto(
@@ -57,6 +83,25 @@ public class SaleService(
             .ToListAsync(cancellationToken);
 
         return new ItemsResponseDto<SaleSummaryDto>(items);
+    }
+
+    /// <summary>
+    /// For text that is only digits and phone punctuation (at least 3 digits): the digits without a +994 country code or a
+    /// leading trunk 0, so it matches the stored international form. Null when the text does not look like a phone.
+    /// </summary>
+    private static string? PhoneSearchKey(string text)
+    {
+        if (text.Any(c => !char.IsDigit(c) && " +-()".IndexOf(c) < 0))
+            return null;
+
+        var digits = new string(text.Where(char.IsDigit).ToArray());
+
+        if (digits.StartsWith("994", StringComparison.Ordinal) && digits.Length > 3)
+            digits = digits[3..];
+        else if (digits.StartsWith('0'))
+            digits = digits[1..];
+
+        return digits.Length >= 3 ? digits : null;
     }
 
     public async Task<Result<SaleLookupResponseDto>> GetByIdAsync(string companyId, string id, CancellationToken cancellationToken)
@@ -128,6 +173,11 @@ public class SaleService(
 
         await transaction.CommitAsync(cancellationToken);
 
+        // An online order already took its units from the store's own stock; only store-side sales need pushing.
+        var channel = await db.Sales.Where(s => s.Id == id).Select(s => s.Channel).SingleAsync(cancellationToken);
+        if (channel != SaleChannel.Online)
+            await storefrontSync.SyncAsync(companyId, lines.Select(l => l.ProductId).Distinct().ToList(), cancellationToken);
+
         var approvedSale = (await FindAsync(companyId, id, cancellationToken))!;
         await audit.LogAsync(companyId, AuditModule.Retail, AuditAction.Update,
             $"'{approvedSale.DocumentNumber}' satış qaiməsi təsdiqləndi ({approvedSale.TotalAmount:0.00} ₼)", cancellationToken);
@@ -196,6 +246,10 @@ public class SaleService(
         }
 
         await transaction.CommitAsync(cancellationToken);
+
+        // After the commit: a Khazar failure is logged inside and cannot undo the sale. A product that reached 0 is
+        // pushed as 0, which Khazar shows as sold out for that size/colour.
+        await storefrontSync.SyncAsync(companyId, sale.Items.Select(i => i.ProductId).Distinct().ToList(), cancellationToken);
 
         await audit.LogAsync(companyId, AuditModule.Retail, AuditAction.Create,
             $"'{sale.DocumentNumber}' POS satışı edildi ({sale.TotalAmount:0.00} ₼)", cancellationToken);
@@ -348,6 +402,8 @@ public class SaleService(
         if (changed == 0)
             return Result<SaleResponseDto>.Failure(ErrorType.Conflict, "Satış eyni anda dəyişdirildi. Yenidən cəhd edin.");
 
+        var returnedProductIds = new List<string>();
+
         // A draft never took stock (approval was skipped or rolled back), so only an approved sale gives any back.
         if (sale.Status == SaleStatus.Approved)
         {
@@ -359,6 +415,8 @@ public class SaleService(
             // Same fixed ordinal order as the decrease, so concurrent documents lock stock rows in one sequence.
             foreach (var line in lines.GroupBy(l => l.ProductId).OrderBy(g => g.Key, StringComparer.Ordinal))
                 await stockWriter.IncreaseAsync(companyId, sale.WarehouseId, line.Key, line.Sum(l => l.Quantity), cancellationToken);
+
+            returnedProductIds = lines.Select(l => l.ProductId).Distinct().ToList();
         }
 
         // A POS sale was paid into a cash register; take that money back out and record the reversal.
@@ -390,6 +448,10 @@ public class SaleService(
 
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+
+        // Online orders get their units back inside Khazar itself; store-side sales must be pushed there.
+        if (sale.Channel != SaleChannel.Online && returnedProductIds.Count > 0)
+            await storefrontSync.SyncAsync(companyId, returnedProductIds, cancellationToken);
 
         await audit.LogAsync(companyId, AuditModule.Retail, AuditAction.Update,
             sale.ExternalOrderNumber is null

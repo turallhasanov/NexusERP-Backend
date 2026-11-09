@@ -55,6 +55,17 @@ public class AdminController(IPlatformAdminService adminService) : ApiController
         ToActionResult(await adminService.UpdateStatusAsync(id, request, cancellationToken));
 
     /// <summary>
+    /// Connects a company to an e-commerce storefront by name (e.g. "Khazar"), or disconnects it with an empty name.
+    /// Only connected companies send products to the shared storefront.
+    /// </summary>
+    [HttpPut("tenants/{id}/storefront")]
+    [ProducesResponseType<TenantResponseDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateTenantStorefront(string id, [FromBody] UpdateTenantStorefrontRequestDto request, CancellationToken cancellationToken) =>
+        ToActionResult(await adminService.UpdateStorefrontAsync(id, request, cancellationToken));
+
+    /// <summary>
     /// Deletes the company. Soft delete: it keeps its users and records (documents, stock, finance) for integrity,
     /// leaves the tenant list and analytics, and its users can no longer sign in.
     /// </summary>

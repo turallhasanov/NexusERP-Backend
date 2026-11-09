@@ -37,33 +37,48 @@ public class ProductsController(IProductService productService, ProductImageStor
     /// </summary>
     [HttpPost]
     [Consumes("multipart/form-data")]
-    [RequestSizeLimit(ProductImageStore.MaxFileBytes + 64 * 1024)]
+    [RequestSizeLimit(ProductImageStore.MaxFileBytes * (1 + ProductForm.MaxGalleryImages) + 64 * 1024)]
     [ProducesResponseType<ProductResponseDto>(StatusCodes.Status200OK)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> CreateWithImage([FromForm] ProductForm form, CancellationToken cancellationToken)
+    public async Task<IActionResult> Create([FromForm] ProductForm form, CancellationToken cancellationToken)
     {
         var upload = await SaveImageAsync(form.Image, cancellationToken);
         if (upload.Error is not null)
             return BadRequest(new ErrorResponse(upload.Error));
 
-        var request = new CreateProductRequestDto(
-            form.CategoryId, form.UnitId, form.Name, form.Barcode, form.PurchasePrice, form.SalePrice, form.ShowOnWebsite);
-        var result = await productService.CreateAsync(CurrentCompanyId, request, upload.Url, cancellationToken);
+        var gallery = await SaveGalleryAsync(form.GalleryImages, cancellationToken);
+        if (gallery.Error is not null)
+        {
+            DeleteFiles(upload.Url, gallery.Urls);
+            return BadRequest(new ErrorResponse(gallery.Error));
+        }
 
-        // Refused, so the photo that came with it would only be left behind.
-        if (!result.IsSuccess && upload.Url is not null)
-            imageStore.TryDelete(upload.Url);
+        try
+        {
+            var request = new CreateProductRequestDto(
+                form.CategoryId, form.UnitId, form.Name, form.Barcode, form.PurchasePrice, form.SalePrice, form.ShowOnWebsite);
+            var result = await productService.CreateAsync(CurrentCompanyId, request, upload.Url, cancellationToken, gallery.Urls);
 
-        return ToActionResult(result);
+            // Refused, so the photo that came with it would only be left behind.
+            if (!result.IsSuccess && upload.Url is not null)
+                imageStore.TryDelete(upload.Url);
+
+            return ToActionResult(result);
+        }
+        finally
+        {
+            // Extra photos live in the Khazar store gallery; this system keeps only the main one.
+            DeleteFiles(null, gallery.Urls);
+        }
     }
 
-    /// <summary>The same as <see cref="CreateWithImage"/> with a JSON body and no photo; used by other systems (Khazar).</summary>
+    /// <summary>The same as <see cref="Create"/> with a JSON body and no photo; used by other systems (Khazar).</summary>
     [HttpPost]
     [Consumes("application/json")]
     [ApiExplorerSettings(IgnoreApi = true)]
-    public async Task<IActionResult> Create([FromBody] CreateProductRequestDto request, CancellationToken cancellationToken) =>
+    public async Task<IActionResult> CreateFromJson([FromBody] CreateProductRequestDto request, CancellationToken cancellationToken) =>
         ToActionResult(await productService.CreateAsync(CurrentCompanyId, request, imageUrl: null, cancellationToken));
 
     /// <summary>
@@ -72,7 +87,7 @@ public class ProductsController(IProductService productService, ProductImageStor
     /// </summary>
     [HttpPut("{id}")]
     [Consumes("multipart/form-data")]
-    [RequestSizeLimit(ProductImageStore.MaxFileBytes + 64 * 1024)]
+    [RequestSizeLimit(ProductImageStore.MaxFileBytes * (1 + ProductForm.MaxGalleryImages) + 64 * 1024)]
     [ProducesResponseType<ProductResponseDto>(StatusCodes.Status200OK)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
@@ -82,14 +97,61 @@ public class ProductsController(IProductService productService, ProductImageStor
         if (upload.Error is not null)
             return BadRequest(new ErrorResponse(upload.Error));
 
-        var request = new UpdateProductRequestDto(
-            form.CategoryId, form.UnitId, form.Name, form.PurchasePrice, form.SalePrice, form.ShowOnWebsite);
-        var result = await productService.UpdateAsync(CurrentCompanyId, id, request, upload.Url, form.RemoveImage, cancellationToken);
+        var gallery = await SaveGalleryAsync(form.GalleryImages, cancellationToken);
+        if (gallery.Error is not null)
+        {
+            DeleteFiles(upload.Url, gallery.Urls);
+            return BadRequest(new ErrorResponse(gallery.Error));
+        }
 
-        if (!result.IsSuccess && upload.Url is not null)
-            imageStore.TryDelete(upload.Url);
+        try
+        {
+            var request = new UpdateProductRequestDto(
+                form.CategoryId, form.UnitId, form.Name, form.PurchasePrice, form.SalePrice, form.ShowOnWebsite);
+            var result = await productService.UpdateAsync(
+                CurrentCompanyId, id, request, upload.Url, form.RemoveImage, cancellationToken, gallery.Urls);
 
-        return ToActionResult(result);
+            if (!result.IsSuccess && upload.Url is not null)
+                imageStore.TryDelete(upload.Url);
+
+            return ToActionResult(result);
+        }
+        finally
+        {
+            DeleteFiles(null, gallery.Urls);
+        }
+    }
+
+    // Extra photos are checked and stored like the main one, but only for the length of the request.
+    private async Task<(List<string> Urls, string? Error)> SaveGalleryAsync(IFormFileCollection? files, CancellationToken cancellationToken)
+    {
+        var urls = new List<string>();
+        var pick = files?.Where(file => file.Length > 0).ToList() ?? [];
+
+        if (pick.Count > ProductForm.MaxGalleryImages)
+            return (urls, $"Ən çox {1 + ProductForm.MaxGalleryImages} şəkil yükləmək olar.");
+
+        foreach (var file in pick)
+        {
+            string? error = null;
+            var url = await imageStore.SaveAsync(file, message => error = message, cancellationToken);
+
+            if (url is null)
+                return (urls, error);
+
+            urls.Add(url);
+        }
+
+        return (urls, null);
+    }
+
+    private void DeleteFiles(string? main, IEnumerable<string> extra)
+    {
+        if (main is not null)
+            imageStore.TryDelete(main);
+
+        foreach (var url in extra)
+            imageStore.TryDelete(url);
     }
 
     private async Task<(string? Url, string? Error)> SaveImageAsync(IFormFile? image, CancellationToken cancellationToken)
@@ -118,6 +180,9 @@ public class ProductsController(IProductService productService, ProductImageStor
 /// <summary>Body of POST /api/products and PUT /api/products/{id} (multipart/form-data).</summary>
 public sealed class ProductForm
 {
+    /// <summary>Photos beyond the main <c>image</c>; the Khazar store gallery holds at most 12 in all.</summary>
+    public const int MaxGalleryImages = 7;
+
     public string? CategoryId { get; init; }
     public string? UnitId { get; init; }
     public string? Name { get; init; }
@@ -129,5 +194,8 @@ public sealed class ProductForm
     public decimal? SalePrice { get; init; }
     public bool ShowOnWebsite { get; init; }
     public IFormFile? Image { get; init; }
+
+    /// <summary>Further photos (<c>galleryImages</c>, repeated): sent to the Khazar store gallery, not kept here.</summary>
+    public IFormFileCollection? GalleryImages { get; init; }
     public bool RemoveImage { get; init; }
 }

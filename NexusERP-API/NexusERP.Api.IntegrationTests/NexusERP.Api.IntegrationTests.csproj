@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The real API pipeline (Program.cs: auth, CORS, filters, GlobalExceptionHandler, routing) hosted in memory by
+       WebApplicationFactory. The SQL Server DbContext is swapped for SQLite in memory and the Khazar HTTP clients for
+       mocks, so the tests never reach the dev database or Khazar. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentAssertions" Version="6.12.2" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.30" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.30" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="Moq" Version="4.20.72" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="FluentAssertions" />
+    <Using Include="Moq" />
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\NexusERP.Api\NexusERP.Api.csproj" />
+  </ItemGroup>
+
+  <!-- Same SQLite-in-memory context the unit tests use (decimals stored as REAL so SUM works). -->
+  <ItemGroup>
+    <Compile Include="..\NexusERP.Application.Tests\TestSupport\SqliteTestDatabase.cs" Link="TestSupport\SqliteTestDatabase.cs" />
+  </ItemGroup>
+
+</Project>

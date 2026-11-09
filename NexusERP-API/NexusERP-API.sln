@@ -11,6 +11,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NexusERP.Infrastructure", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NexusERP.Api", "NexusERP.Api\NexusERP.Api.csproj", "{6403E417-CD85-4CED-AE39-082683DE27E0}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05-4346-4AA6-1389-037BE0695223}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NexusERP.Application.Tests", "NexusERP.Application.Tests\NexusERP.Application.Tests.csproj", "{444C0FB6-FB78-4FBD-ABAD-BCB0226F0D0A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NexusERP.Api.IntegrationTests", "NexusERP.Api.IntegrationTests\NexusERP.Api.IntegrationTests.csproj", "{D457ADE5-E14F-469E-8FC5-D86703DEC74B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -69,9 +75,37 @@ Global
 		{6403E417-CD85-4CED-AE39-082683DE27E0}.Release|x64.Build.0 = Release|Any CPU
 		{6403E417-CD85-4CED-AE39-082683DE27E0}.Release|x86.ActiveCfg = Release|Any CPU
 		{6403E417-CD85-4CED-AE39-082683DE27E0}.Release|x86.Build.0 = Release|Any CPU
+		{444C0FB6-FB78-4FBD-ABAD-BCB0226F0D0A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{444C0FB6-FB78-4FBD-ABAD-BCB0226F0D0A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{444C0FB6-FB78-4FBD-ABAD-BCB0226F0D0A}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{444C0FB6-FB78-4FBD-ABAD-BCB0226F0D0A}.Debug|x64.Build.0 = Debug|Any CPU
+		{444C0FB6-FB78-4FBD-ABAD-BCB0226F0D0A}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{444C0FB6-FB78-4FBD-ABAD-BCB0226F0D0A}.Debug|x86.Build.0 = Debug|Any CPU
+		{444C0FB6-FB78-4FBD-ABAD-BCB0226F0D0A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{444C0FB6-FB78-4FBD-ABAD-BCB0226F0D0A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{444C0FB6-FB78-4FBD-ABAD-BCB0226F0D0A}.Release|x64.ActiveCfg = Release|Any CPU
+		{444C0FB6-FB78-4FBD-ABAD-BCB0226F0D0A}.Release|x64.Build.0 = Release|Any CPU
+		{444C0FB6-FB78-4FBD-ABAD-BCB0226F0D0A}.Release|x86.ActiveCfg = Release|Any CPU
+		{444C0FB6-FB78-4FBD-ABAD-BCB0226F0D0A}.Release|x86.Build.0 = Release|Any CPU
+		{D457ADE5-E14F-469E-8FC5-D86703DEC74B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D457ADE5-E14F-469E-8FC5-D86703DEC74B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D457ADE5-E14F-469E-8FC5-D86703DEC74B}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{D457ADE5-E14F-469E-8FC5-D86703DEC74B}.Debug|x64.Build.0 = Debug|Any CPU
+		{D457ADE5-E14F-469E-8FC5-D86703DEC74B}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{D457ADE5-E14F-469E-8FC5-D86703DEC74B}.Debug|x86.Build.0 = Debug|Any CPU
+		{D457ADE5-E14F-469E-8FC5-D86703DEC74B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D457ADE5-E14F-469E-8FC5-D86703DEC74B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D457ADE5-E14F-469E-8FC5-D86703DEC74B}.Release|x64.ActiveCfg = Release|Any CPU
+		{D457ADE5-E14F-469E-8FC5-D86703DEC74B}.Release|x64.Build.0 = Release|Any CPU
+		{D457ADE5-E14F-469E-8FC5-D86703DEC74B}.Release|x86.ActiveCfg = Release|Any CPU
+		{D457ADE5-E14F-469E-8FC5-D86703DEC74B}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{444C0FB6-FB78-4FBD-ABAD-BCB0226F0D0A} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{D457ADE5-E14F-469E-8FC5-D86703DEC74B} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {28F84E3E-20D7-4742-A4EF-8301CAD3234C}

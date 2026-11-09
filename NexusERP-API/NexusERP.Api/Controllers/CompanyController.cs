@@ -15,12 +15,14 @@ namespace NexusERP.Api.Controllers;
 public class CompanyController(ICompanyService companyService) : ApiControllerBase
 {
     [HttpGet]
+    [AllowUnapproved]
     [ProducesResponseType<CurrentCompanyResponseDto>(StatusCodes.Status200OK)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Get(CancellationToken cancellationToken) =>
         ToActionResult(await companyService.GetForUserAsync(CurrentUserId, cancellationToken));
 
     [HttpPost]
+    [AllowUnapproved]
     [ProducesResponseType<CompanyResponseDto>(StatusCodes.Status200OK)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
@@ -30,6 +32,7 @@ public class CompanyController(ICompanyService companyService) : ApiControllerBa
 
     /// <summary>Joins the company with this invite code as staff; returns a new token with the companyId claim.</summary>
     [HttpPost("join")]
+    [AllowUnapproved]
     [ProducesResponseType<CompanyResponseDto>(StatusCodes.Status200OK)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]

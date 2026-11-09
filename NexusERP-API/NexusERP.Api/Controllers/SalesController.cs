@@ -12,7 +12,7 @@ namespace NexusERP.Api.Controllers;
 public class SalesController(ISaleService saleService) : ApiControllerBase
 {
     /// <summary>
-    /// Cancels a sale (status "cancelled") and returns its items to the warehouse stock. An online (Khazar) order is
+    /// Deletes a sale by cancelling it (status "cancelled"; the document is kept) and returns its items to the warehouse stock. An online (Khazar) order is
     /// cancelled in Khazar first, so its stock comes back there too; if Khazar cannot cancel it, nothing changes (503).
     /// A POS payment is taken back out of its cash register. Company admins and IT admins only.
     /// </summary>
@@ -23,13 +23,19 @@ public class SalesController(ISaleService saleService) : ApiControllerBase
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status409Conflict)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status503ServiceUnavailable)]
-    public async Task<IActionResult> Cancel(string id, CancellationToken cancellationToken) =>
+    public async Task<IActionResult> Delete(string id, CancellationToken cancellationToken) =>
         ToActionResult(await saleService.CancelAsync(CurrentCompanyId, id, cancellationToken));
 
+    /// <summary>
+    /// Lists the sales, newest first. Both filters are optional and combine: <c>customerId</c> keeps one counterparty's
+    /// sales; <c>search</c> keeps those whose customer name, code or phone (counterparty or online shopper) or document
+    /// number contains the text.
+    /// </summary>
     [HttpGet]
     [ProducesResponseType<ItemsResponseDto<SaleSummaryDto>>(StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetAll(CancellationToken cancellationToken) =>
-        ToActionResult(await saleService.GetAllAsync(CurrentCompanyId, cancellationToken));
+    public async Task<IActionResult> GetAll(
+        [FromQuery] string? customerId, [FromQuery] string? search, CancellationToken cancellationToken) =>
+        ToActionResult(await saleService.GetAllAsync(CurrentCompanyId, customerId, search, cancellationToken));
 
     [HttpGet("{id}")]
     [ProducesResponseType<SaleLookupResponseDto>(StatusCodes.Status200OK)]

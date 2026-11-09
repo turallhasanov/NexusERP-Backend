@@ -68,7 +68,7 @@ public partial class AuthService(
         if (await CompanyBlockedMessageAsync(user, cancellationToken) is { } blocked)
             return Result<AuthResponseDto>.Failure(ErrorType.Unauthorized, blocked);
 
-        return new AuthResponseDto(jwtTokenGenerator.GenerateToken(user), UserDto.From(user));
+        return new AuthResponseDto(jwtTokenGenerator.GenerateToken(user), (await WithPermissionsAsync(user, cancellationToken)));
     }
 
     /// <summary>Creates an unconfirmed account and e-mails a 6-digit code; no token until the code is entered.</summary>
@@ -168,7 +168,7 @@ public partial class AuthService(
         if (await CompanyBlockedMessageAsync(user, cancellationToken) is { } blocked)
             return Result<AuthResponseDto>.Failure(ErrorType.Unauthorized, blocked);
 
-        return new AuthResponseDto(jwtTokenGenerator.GenerateToken(user), UserDto.From(user));
+        return new AuthResponseDto(jwtTokenGenerator.GenerateToken(user), (await WithPermissionsAsync(user, cancellationToken)));
     }
 
     /// <summary>Sends a new registration code (at most once a minute).</summary>
@@ -261,7 +261,7 @@ public partial class AuthService(
         if (user is null)
             return Result<CurrentUserResponseDto>.Failure(ErrorType.NotFound, "İstifadəçi tapılmadı.");
 
-        return new CurrentUserResponseDto(UserDto.From(user));
+        return new CurrentUserResponseDto((await WithPermissionsAsync(user, cancellationToken)));
     }
 
     private static Result<CodeStepResponseDto> IssuedResponse(string email, string message, OtpIssueResult issued) =>
@@ -282,6 +282,23 @@ public partial class AuthService(
     };
 
     private static string? ValidateEmail(string? email) => AccountRules.ValidateEmail(email);
+
+    /// <summary>
+    /// The user with the module keys of their custom role ("products", "warehouses", ...). Only "staff" is limited
+    /// by them; admins and IT admins see every module whatever this list holds.
+    /// </summary>
+    private async Task<UserDto> WithPermissionsAsync(User user, CancellationToken cancellationToken)
+    {
+        var permissions = user.CustomRoleId is null
+            ? []
+            : await db.CustomRoles
+                .AsNoTracking()
+                .Where(r => r.Id == user.CustomRoleId && r.CompanyId == user.CompanyId)
+                .Select(r => r.Permissions)
+                .FirstOrDefaultAsync(cancellationToken) ?? [];
+
+        return UserDto.From(user) with { Permissions = permissions };
+    }
 
     private static string? ValidatePassword(string? password) => AccountRules.ValidatePassword(password);
 
@@ -322,7 +339,8 @@ public partial class AuthService(
             Name = "Aysel Məmmədova",
             Email = DemoEmail,
             Role = AppRoles.Admin,
-            IsEmailConfirmed = true
+            IsEmailConfirmed = true,
+            IsApproved = true
         };
 
         db.Users.Add(user);

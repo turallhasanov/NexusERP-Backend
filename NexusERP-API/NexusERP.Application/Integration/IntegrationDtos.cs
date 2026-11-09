@@ -39,7 +39,17 @@ public interface IKhazarOrderClient
 
 /// <summary>A product as it is sent to the Khazar store. <paramref name="Sku"/> is the product's barcode.</summary>
 public sealed record KhazarProductPush(
-    string Sku, string Name, string? CategoryName, decimal SalePrice, int Stock, bool IsPublished);
+    string Sku, string Name, string? CategoryName, decimal SalePrice, int Stock, bool IsPublished)
+{
+    /// <summary>
+    /// Further photos sent once with the product (they are not kept here; the store's gallery holds them). They follow
+    /// the main image, or, with no main image in this push, the photos the store already has.
+    /// </summary>
+    public IReadOnlyList<KhazarGalleryImage>? Gallery { get; init; }
+}
+
+/// <summary>A gallery photo's file name and bytes.</summary>
+public sealed record KhazarGalleryImage(string FileName, byte[] Content);
 
 /// <summary>Outcome of sending a product to Khazar: <see cref="Error"/> is an Azerbaijani reason when it failed.</summary>
 public sealed record KhazarProductResult(bool Success, string? Error)

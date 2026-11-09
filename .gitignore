@@ -2,3 +2,7 @@ bin/
 obj/
 .vs/
 *.user
+
+# Serilog daily log files (logs/nexus-*.txt, logs/khazar-*.txt)
+Logs/
+logs/

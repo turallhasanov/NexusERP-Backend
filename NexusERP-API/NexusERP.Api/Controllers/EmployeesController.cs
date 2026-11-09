@@ -11,7 +11,8 @@ namespace NexusERP.Api.Controllers;
 /// payroll); hiring, leave, termination and the hiring and termination orders are for admins and IT admins only, and deleting
 /// an employee for IT admins only.
 /// </summary>
-[Authorize, RequireCompany]
+// Company managers, and staff whose custom role lists this module; everyone else gets 403.
+[Authorize, RequireCompany, RequireModule("hr")]
 [ProducesResponseType<ErrorResponse>(StatusCodes.Status401Unauthorized)]
 [ProducesResponseType<ErrorResponse>(StatusCodes.Status403Forbidden)]
 public class EmployeesController(IEmployeeService employeeService) : ApiControllerBase

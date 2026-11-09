@@ -55,6 +55,7 @@ public static class DependencyInjection
         services.AddScoped<IPlatformAdminService, PlatformAdminService>();
         services.AddScoped<IRoleService, RoleService>();
         services.AddScoped<ICatalogSyncService, CatalogSyncService>();
+        services.AddScoped<IStorefrontStockSync, StorefrontStockSync>();
 
         return services;
     }
